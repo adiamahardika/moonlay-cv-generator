@@ -1,0 +1,5 @@
+server/venv/
+server/node_modules
+moonlay-quotation/node_modules
+server/.env
+.env
