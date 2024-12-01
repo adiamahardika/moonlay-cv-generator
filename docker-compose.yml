@@ -1,0 +1,45 @@
+version: '3'
+
+services:
+  frontend:
+    build:
+      context: ./frontend
+    ports:
+      - "5173:5173"
+    env_file:
+      - ./.env  # Use shared .env file for environment variables
+    stdin_open: true
+    tty: true
+    depends_on:
+      - backend  # Ensure backend starts first
+    networks:
+      - app-network
+    volumes:
+      # Bind shared static directory for development
+      - ./static:/static  # Optional: remove for production to isolate files
+
+  backend:
+    build:
+      context: ./server
+    ports:
+      - "5180:5180"
+    volumes:
+      # Use a Docker volume for app storage to isolate from local filesystem
+      - backend-data:/app
+      # Optional: Uncomment during development to access files locally
+      # - ./server:/app
+    env_file:
+      - ./.env  # Use the same .env file here for backend variables
+    environment:
+      - FLASK_ENV=development
+    stdin_open: true
+    tty: true
+    networks:
+      - app-network
+
+networks:
+  app-network:
+    driver: bridge
+
+volumes:
+  backend-data:  # Docker-managed volume for backend data
