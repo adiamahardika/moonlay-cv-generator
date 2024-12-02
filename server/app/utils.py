@@ -182,7 +182,7 @@ def generate_quotation_file(data, quotation_code, quotation_type):
                         )
                     else:
                         sheet[f"{col}{row}"].alignment = Alignment(
-                            horizontal="left", vertical="center"
+                            horizontal="center", vertical="center"
                         )
 
             start_row += 2
@@ -190,7 +190,7 @@ def generate_quotation_file(data, quotation_code, quotation_type):
             print(f"Error processing expense {i + 1}: {e}")
             
     vat_rate = data.get("vat_rate", "11%")  # Default to "11%" if vat_rate is missing
-    vat_rate_label = f"Vat {vat_rate}%"  # Create the label dynamically
+    vat_rate_label = f"Vat ({vat_rate})%"  # Create the label dynamically
 
     if quotation_type == "VMS":
         summary_rows = [
@@ -203,7 +203,7 @@ def generate_quotation_file(data, quotation_code, quotation_type):
     elif quotation_type in ["BR", "PR"]:
         summary_rows = [
             ("Subtotal", data.get("quotation_subtotal", 0), "FFBFBFBF"),
-            ("Vat 11%", data.get("quotation_ppn", 0), "FFD8D8D8"),
+            (vat_rate_label, data.get("quotation_ppn", 0), "FFD8D8D8"),
             ("Grand Total", data.get("quotation_grandtotal", 0), "FF01205E"),
         ]
 
