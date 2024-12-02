@@ -34,7 +34,7 @@ export default function Header() {
 
   // common header
   const mainHeader = (
-    <Toolbar sx={{ backgroundColor: '#f0f0f0' }}>
+    <Toolbar sx={{ backgroundColor: '#f0f0f0', zIndex: '10' }}>
       <IconButton
         disableRipple
         aria-label="open drawer"
@@ -56,8 +56,8 @@ export default function Header() {
     color: 'inherit',
     elevation: 0,
     sx: {
-      borderBottom: `1px solid ${theme.palette.divider}`
-      // boxShadow: theme.customShadows.z1
+      borderBottom: `1px solid ${theme.palette.divider}`,
+      zIndex: theme.zIndex.appBar - 1 // Set lower than dialogs
     }
   };
 
