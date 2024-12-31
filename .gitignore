@@ -1,0 +1,5 @@
+server/venv/
+server/node_modules
+moonlayhr/node_modules
+server/.env
+keycloak-25.0.4
