@@ -1,0 +1,279 @@
+.filter-btn{
+    background-color: #2a8a40;
+}
+
+.default-btn{
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+
+    padding: 10px 20px 10px 20px   ;
+    font-size: 12px;
+    border-radius: 5px;
+    border: 1px solid lightgray;
+    box-shadow: rgba(0, 0, 0, 0.1) 0 4px 12px;
+color: white;
+transition: all 250ms;
+ user-select: none;
+ -webkit-user-select: none;
+ touch-action: manipulation;
+ vertical-align: baseline;
+ cursor:pointer;
+  }
+
+.action-buttons{
+  margin-left: auto !important;
+  margin-right: auto;
+}
+
+.default-btn:hover,
+.default-btn:focus {
+ border-color: rgba(0, 0, 0, 0.15);
+ box-shadow: rgba(0, 0, 0, 0.1) 0 4px 12px;
+}
+
+.default-btn:hover {
+ transform: translateY(-1px);
+}
+
+.button__icon{
+  margin-left: 10px;
+}
+
+
+.export-btn{
+    background-color: #0685b0;
+     margin-right: 0 !important; /* Pushes dropdown to the end */
+     margin-left: 20px;
+}
+
+.delete-btn{
+    background-color: #c92a2c;
+    margin-left: auto; /* Pushes dropdown to the end */
+   
+}
+
+.fa-solid{
+    margin-left: 10px;
+}
+
+.p-datatable-footer {
+  display: flex;
+  justify-content: flex-start; /* Aligns the paginator to the left */
+  background-color: #ffffff;
+}
+
+.p-paginator {
+  margin-left: 0; /* Optional: remove any default margins */
+  background-color: #f0f0f0;
+}
+.p-column-filter-menu-button {
+  display: none; /* Hides the filter button */
+}
+
+.p-column-filter-element{
+  width: 100%;
+
+}
+
+th input{
+  height: 40px !important;
+  border-radius: 5px;
+}
+
+.p-sortable-column
+{
+  border-top: 1px solid lightgray !important;
+  border-bottom: none;
+}
+
+.p-filter-column{
+  border-top:none;
+  text-align: center;
+}
+
+.custom-header svg{
+  display: none;
+  background-color: #0287b2!important;
+}
+
+.custom-header:hover{
+background: #0287b2;
+cursor:default;
+}
+
+.custom-header{
+  align-content: center !important;
+  align-items: center !important;
+}
+
+.picker-customer-header{
+  align-content: center !important;
+  align-items: center !important;
+}
+
+tbody{
+  font-size: 1px;
+}
+
+th{
+  background-color: #0287b2;
+  color: white;
+  font-weight: 400;
+  padding:10px;
+  font-size: 15px;
+}
+th svg{
+  color: white;
+}
+
+
+th:focus{
+  color: white;
+}
+
+th:focus svg{
+  color: white;
+}
+
+.p-datatable-header{
+  background-color: #f0f0f0;
+  border: none;
+
+}
+
+.custom-dropdown{
+  width: 100%;
+}
+
+.pi-logo{
+  font-size: 12px !important;
+}
+
+.dialog-btn{
+   font-size: 12px !important;
+   gap: 10px;
+   border-radius: 5px;
+   height: 35px;
+   padding-right: 30px;
+   padding-left: 30px;
+   margin-left: 10px;
+   margin-right: 0px;
+}
+.dialog-btn-caret{
+   font-size: 12px !important;
+   border-radius: 5px;
+   height: 35px;
+   padding-right: 30px;
+   padding-left: 30px;
+   margin-left: 10px;
+   margin-right: 0px;
+}
+
+.custom-paginator {
+  width: 100%;
+  display: flex;
+  justify-content: space-between; /* Distributes space between elements */
+  align-items: center; /* Aligns items vertically in the center */
+  position: relative; /* Establishes a positioning context for the pseudo-element */
+  margin-top: 10px;
+  border: none;
+}
+
+/* .custom-paginator::before {
+  content: '';
+  position: absolute;
+/* left: 0;  Align to the left */
+/* width: 25%;  Set width to 25% */
+/*  height: 4px;  Set height to create a border */
+/* background-color: #d9d9d9;  Set border color */
+/*}*/
+
+.p-paginator .p-dropdown {
+  margin-left: auto; /* Pushes dropdown to the end */
+}
+
+.p-paginator .p-paginator-current {
+  margin-right: 0;
+}
+
+.p-column-filter-clear-button{
+  display: none;
+}
+
+.p-column-filter-clear-button :hover{
+  display: none;
+}
+
+.p-icon-field{
+  width: 40% !important;
+  margin: auto !important;
+  font-size: 12px;
+}
+
+.p-inputtext{
+  width: 100%;
+}
+
+.hide{
+  display: none;
+}
+
+:root{
+  font-family: 'Inter', sans-serif !important;
+}
+
+.paginator-control{
+  color: #0287b2 !important;
+  font-size: 12px;
+  height: 25px;
+  margin-top: 15px;
+}
+
+.paginator-control:hover{
+  border-radius: 0;
+}
+
+.rowsperpage{
+  margin-right: 0;
+  margin-left: auto;
+  font-size: 12px;
+  
+}
+
+.p-paginator-pages button:hover{
+border-radius: 0 !important;
+}
+
+.p-paginator-pages button{
+  font-size: 12px;
+  height: 25PX;
+  margin-top: 15px;
+}
+
+.custom-paginator .p-highlight{
+  border-radius: 0;
+  background-color: white;
+  color: black;
+}
+
+.dropdown-control{
+  height: 20%;
+}
+.p-dropdown-label{
+  font-size: 12px;
+}
+
+.custom-header-applicant{
+  background-color: white;
+}
+
+.custom-header-applicant svg{
+  display: none;
+  background-color: white!important;
+}
+
+.custom-header-applicant:hover{
+background: white;
+cursor:default;
+}
