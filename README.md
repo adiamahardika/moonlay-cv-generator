@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 Important!
 
 # Setup For MoonlayHR
@@ -117,3 +118,6 @@ This is MoonlayHR web application, its main functionality include the receiving 
    - navigate to the mantine-template-main folder and run the command "yarn dev" to run the moonlayHR frontend.
 
 ---------------------
+=======
+# moonlay-cv-generator
+>>>>>>> 838bab6bee8c04ff459021f1c06afc5430140775
