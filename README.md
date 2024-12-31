@@ -10,7 +10,6 @@ Important!
 3. Installation
 4. Setup
 5. Usage
-6. ai_speech API
 
 ---------------------
 
