@@ -1,0 +1,105 @@
+.navbar {
+    width: 80px; /* Default collapsed width */
+    height: 100vh;
+    padding: var(--mantine-spacing-md);
+    display: flex;
+    flex-direction: column;
+    border-right: 1px solid lightgray;
+    transition: width 0.2s ease-in-out; /* Smooth transition for width change */
+    font-size: 12px;
+    position: relative;
+    overflow: hidden; /* Prevent content overflow during the transition */
+    background-color: #ffffff;
+}
+
+.navbar.expanded {
+    width: 250px; /* Expanded width */
+}
+
+.navbar.collapsed {
+  width: 100px; /* Define the minimum width for collapsed state */
+  min-width: 100px; /* Prevent sidebar from shrinking further */
+}
+
+.navbarMain {
+    flex: 1;
+    margin-top: 10px;
+}
+
+.linkWrapper {
+    display: flex;
+    flex-direction: column;
+    align-items: left;
+    justify-content: center;
+}
+
+.link {
+    width: auto;
+    height: 40px;
+    text-decoration: none;
+    display: flex;
+    align-items: center;
+    justify-content: flex-start;
+    color: var(--mantine-color-gray-7);
+    transition: background-color 0.2s, color 0.2s;
+    padding: 0 var(--mantine-spacing-xs);
+    margin-bottom: 1px;
+}
+
+.link:hover {
+    background-color: var(--mantine-color-gray-0);
+    cursor: pointer;
+}
+
+.link[data-active="true"] {
+    font-weight: 600;
+    background-color: #0287b2;;
+    color: white;
+}
+
+.linkText {
+    opacity: 0;
+    visibility: hidden;
+    transition: opacity 0.2s ease-in-out 0.2s, visibility 0s linear 0.2s; /* Hide text initially */
+    margin-left: 10px; /* Space between icon and text */
+}
+
+.navbar.expanded .linkText {
+    opacity: 1;
+    visibility: visible;
+    transition-delay: 0.2s; /* Delay the text visibility until after the navbar expands */
+}
+
+.header {
+    padding: 10px;
+    position: relative;
+}
+
+.toggleButton {
+    cursor: pointer;
+    border: none;
+    background: none;
+    color: #0287b2;
+    outline: none;
+}
+
+.minimizeText {
+    opacity: 0;
+    transition: opacity 0.2s ease-in-out 0.2s, visibility 0s linear 0.2s; /* Hide text first, reveal after width transition */
+    visibility: hidden;
+    padding-left: 10px;
+    font-weight: lighter;
+    text-wrap: nowrap;
+    position: absolute;
+}
+
+.navbar.expanded .minimizeText {
+    opacity: 1;
+    visibility: visible;
+    transition-delay: 0.2s; /* Wait for width transition to complete before showing */
+}
+
+nav{
+    min-width: 50px !important;
+    height: 100%;
+}
