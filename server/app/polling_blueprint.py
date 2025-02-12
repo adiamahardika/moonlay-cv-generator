@@ -1,194 +1,154 @@
+# app/polling_module.py
+
+import threading
+import time
 import mysql.connector
-import re
-import os
-import pandas as pd
+from .utils import get_db_connection
+import json
+from langchain_google_genai import ChatGoogleGenerativeAI
+from langchain_community.agent_toolkits.sql.toolkit import SQLDatabaseToolkit
+from langchain_community.agent_toolkits.sql.base import create_sql_agent
+from langchain.memory import ConversationBufferWindowMemory
+from langchain_community.utilities import SQLDatabase
+from langchain.prompts import PromptTemplate
 
+llm = ChatGoogleGenerativeAI(model="gemini-pro", temperature=0.3)
 
-def get_db_connection():
-    return mysql.connector.connect(
-        host=os.getenv("DB_HOST"),
-        user=os.getenv("DB_USER"),
-        password=os.getenv("DB_PASSWORD"),
-        database=os.getenv("DB_NAME"),
+def poll_db_for_new_data():
+    while True:
+        db_conn = get_db_connection()
+        cursor = db_conn.cursor(dictionary=True)
 
-        port=int(os.getenv("DB_PORT"))
+        extracted_data = {}
+
+        try:
+            cursor.execute(
+                "SELECT * FROM rawdata WHERE new_data_flag = 1 LIMIT 1")
+            new_data = cursor.fetchone()
+
+            if new_data:
+                applicant_id = new_data['applicant_id']
+                rawdata = new_data['applicant_raw_data']
+                resumelink = new_data['raw_resumelink']
+                date_applied = new_data['created_at']
+
+                extracted_data = extract_applicant_data(rawdata)
+
+                print("Extracted Data:", extracted_data)
+
+                parse_and_insert_data(
+                    db_conn, applicant_id, extracted_data, resumelink, date_applied)
+
+                cursor.execute(
+                    "UPDATE rawdata SET new_data_flag = 0 WHERE applicant_id = %s", (applicant_id,))
+                db_conn.commit()
+                print(f"rawdata table updated for applicant {applicant_id}.")
+            else:
+                print("No new data found for extraction.")
+
+        except Exception as e:
+            print(f"Error polling database: {e}")
+            print("Extracted Data at error point:", extracted_data)
+
+        finally:
+            cursor.close()
+            db_conn.close()
+
+        time.sleep(240)
+
+def extract_applicant_data(rawdata):
+    prompt_template = PromptTemplate(
+        input_variables=["rawdata"],
+        template="""Extract the following details in JSON format only.
+        
+        if no information is found regarding the field, fill the field with 'not specified'
+
+        Applicant Details:
+        - Full name
+        - Gender
+        - Date of birth
+        - Nationality
+        - Address
+        - City
+        - Contact number
+        - Email
+        - Date of application
+        - Resume link
+
+        Work Experience (SEPARATE THE START AND END DATE INTO DIFFERENT CATEGORIES):
+        - Company name
+        - Position
+        - Work Start date
+        - Work end dates
+
+        Education (SEPARATE THE START AND END DATE INTO DIFFERENT CATEGORIES) (ONLY TAKE THE HIGHEST EDUCATION/DEGREE, DONT INCLUDE THEM ALL):
+        - Institution name (ONLY TAKE HIGHEST EDUCATION/DEGREE)
+        - Degree title (ONLY TAKE HIGHEST EDUCATION/DEGREE)
+        - Education Start date (ONLY TAKE HIGHEST EDUCATION/DEGREE)
+        - Education End date (ONLY TAKE HIGHEST EDUCATION/DEGREE)
+         
+        Programming Skills (Extract in one long string separated with commas):
+        - Known Programming Languages.
+        
+        Product Knowledge Skills (Extract in one long string separated with commas):
+        - Known Expertise regarding how to use a product (excel, word, and other like it)
+        
+        Language Skills (Extract in one long string separated with commas):
+        - Languages that the individual can speak
+        
+        Operating System Skills (Extract in one long string separated with commas):
+        - Operating Systems the individual can use.
+        
+        Project Methodology Skills (Extract in one long string separated with commas):
+        - Different project methodologies the individual is used to.
+        
+        Other Relevant Skills (Extract in one long string separated with commas):
+        - Other skills that don't fit the other categories.
+
+        Certifications:
+        - Certification name
+        - Issued by
+        - Issue date
+        - Expiry date
+
+        Return only JSON format without additional explanations.
+
+        Text:
+        {rawdata}
+        """
     )
 
-def parse_customer_experience(customer_experience_str):
-    positions = []
-    employers = []
-    start_dates = []
-    end_dates = []
-    projects = []
+    # Generate the prompt using the rawdata
+    prompt = prompt_template.format(rawdata=rawdata)
 
-    # Split customer experiences using the '*' character
-    customer_entries = customer_experience_str.strip().split(',')
+    try:
+        # Run the LLM model and retrieve the response
+        response = llm.invoke(prompt)
 
-    for entry in customer_entries:
-        entry = entry.strip()
-        if not entry:
-            continue  # Skip empty entries
+        # Verify the response type
+        if hasattr(response, 'content'):
+            response_text = response.content
+        elif isinstance(response, str):
+            response_text = response
+        else:
+            print("Unexpected response format. Extraction halted.")
+            return {}
 
-        # Split position, employer, and dates
-        parts = entry.split(':')
-        if len(parts) != 2:
-            continue  # Skip malformed entries
+        # Clean up response text and parse JSON
+        response_text = response_text.strip("```json\n").strip("```")
+        extracted_data = json.loads(response_text)
 
-        position_employer = parts[0].strip().split('|')
-        if len(position_employer) != 2:
-            continue  # Skip malformed entries
+    except json.JSONDecodeError as e:
+        print(f"JSON parsing error: {e}")
+        extracted_data = {}
+    except Exception as e:
+        print(f"Unexpected extraction error: {e}")
+        extracted_data = {}
 
-        position = position_employer[0].strip()
-        employer = position_employer[1].strip()
-        dates = parts[1].strip().split('/')
-        start_date = dates[0].strip()
-        end_date = dates[1].strip() if len(dates) > 1 else 'Present'
+    print(f"Extracted data: {extracted_data}")  # Log the extracted data
+    return extracted_data
 
-        # Clean dates
-        start_date = re.sub(r'[^0-9/-]', '', start_date) or 'Not Specified'
-        end_date = re.sub(r'[^0-9/-]', '', end_date) or 'Present'
-
-        # Append values to lists
-        positions.append(position)
-        employers.append(employer)
-        start_dates.append(start_date)
-        end_dates.append(end_date)
-
-        # Extract project name for customer experience
-        project_name = parts[1].strip().split(
-            '*')[-1] if '*' in parts[1] else ''
-        projects.append(project_name.strip())
-
-    # Create DataFrame for customer experience
-    return pd.DataFrame({
-        'Position': positions,
-        'Employer': employers,
-        'Start Date': start_dates,
-        'End Date': end_dates,
-        'Project Name': projects
-    })
-
-def parse_education(group_concat_string):
-    # List to store parsed education details
-    parsed_education = []
-
-    # Regular expression pattern to capture institution, degree title, start, and end dates
-    # This assumes a format like: "Institution Name - Degree Title (start_date / end_date)"
-    pattern = r'([^,]+?) - ([^()]+?) \(([^/]+?) / ([^)]+?)\)'
-
-    # Find all matches in the input string
-    matches = re.findall(pattern, group_concat_string)
-
-    print(f"Debug: matches = {matches}")
-
-    # Process each match
-    for match in matches:
-        institution, degree_title, start_date, end_date = match
-        # Append each parsed entry as a dictionary
-        parsed_education.append({
-            'institution_name': institution.strip(),
-            'degree_title': degree_title.strip(),
-            'start_date': start_date.strip(),
-            'end_date': end_date.strip()
-        })
-
-    return parsed_education
-
-def parse_job_experience(job_experience_str):
-    positions = []
-    employers = []
-    start_dates = []
-    end_dates = []
-
-    # Split job experiences by comma
-    job_entries = job_experience_str.strip().split(',')
-
-    for entry in job_entries:
-        entry = entry.strip()
-        if not entry:
-            continue  # Skip empty entries
-
-        # Split position and employer, then dates
-        parts = entry.split(':')
-        if len(parts) != 2:
-            continue  # Skip malformed entries
-
-        position_employer = parts[0].strip().split('|')
-        if len(position_employer) != 2:
-            continue  # Skip malformed entries
-
-        position = position_employer[0].strip()
-        employer = position_employer[1].strip()
-        dates = parts[1].strip().split('/')
-        start_date = dates[0].strip()
-        end_date = dates[1].strip() if len(dates) > 1 else 'Present'
-
-        # Clean dates
-        start_date = re.sub(r'[^0-9/-]', '', start_date) or 'Not Specified'
-        end_date = re.sub(r'[^0-9/-]', '', end_date) or 'Present'
-
-        # Append values to lists
-        positions.append(position)
-        employers.append(employer)
-        start_dates.append(start_date)
-        end_dates.append(end_date)
-
-    # Create DataFrame for job experience
-    return pd.DataFrame({
-        'Position': positions,
-        'Employer': employers,
-        'Start Date': start_dates,
-        'End Date': end_dates
-    })
-
-def format_applicant_data(rows):
-    formatted_data = []
-    for applicant in rows:
-        formatted_applicant = {
-            "applicant_id": applicant["applicant_id"],
-            "applicant_name": applicant["applicant_name"],
-            "applicant_gender": applicant["applicant_gender"],
-            "applicant_dateofbirth": applicant["applicant_dateofbirth"],
-            "applicant_nationality": applicant["applicant_nationality"],
-            "applicant_address": applicant["applicant_address"],
-            "applicant_city": applicant["applicant_city"],
-            "applicant_contact": applicant["applicant_contact"],
-            "applicant_email": applicant["applicant_email"],
-            "applicant_dateofapplication": applicant["applicant_dateofapplication"],
-            "applicant_resumelink": applicant["applicant_resumelink"],
-            "visibility": applicant["visibility"],
-            "programming_skills": applicant["programming_skills"] if applicant["programming_skills"] else 'None',
-            "product_knowledge_skills": applicant["product_knowledge_skills"] if applicant["product_knowledge_skills"] else 'None',
-            "known_languages": applicant["known_languages"] if applicant["known_languages"] else 'None',
-            "operating_systems": applicant["operating_systems"] if applicant["operating_systems"] else 'None',
-            "project_methodologies": applicant["project_methodologies"] if applicant["project_methodologies"] else 'None',
-            "other_skills": applicant["other_skills"] if applicant["other_skills"] else 'None',
-            "job_experiences": applicant["job_experiences"] if applicant["job_experiences"] else 'No job experience available.',
-            "customer_experiences": applicant["customer_experiences"] if applicant["customer_experiences"] else 'No customer experience available.',
-            "education": applicant["education"] if applicant["education"] else 'No education data available.',
-        }
-
-        # Formatting skills into HTML with spacing
-        formatted_applicant["applicant_skill"] = f"""
-            <b>Programming</b><br>{formatted_applicant["programming_skills"]}<br><br>
-            <b>Product Knowledge</b><br>{formatted_applicant["product_knowledge_skills"]}<br><br>
-            <b>Known Language</b><br>{formatted_applicant["known_languages"]}<br><br>
-            <b>Operating System</b><br>{formatted_applicant["operating_systems"]}<br><br>
-            <b>Project Methodology</b><br>{formatted_applicant["project_methodologies"]}<br><br>
-            <b>Other</b><br>{formatted_applicant["other_skills"]}<br><br>
-        """
-
-        # Formatting education
-        formatted_applicant["applicant_education"] = f"""
-            <br>{formatted_applicant["education"]}<br><br>
-        """
-
-        # Adding the formatted applicant to the list
-        formatted_data.append(formatted_applicant)
-
-    return formatted_data
-
-
+def parse_and_insert_data(db_conn, applicant_id, extracted_data, raw_resumelink, date_applied):
     if not extracted_data:
         print("No valid data extracted to insert.")
         return
@@ -243,7 +203,8 @@ def format_applicant_data(rows):
                         start_date,
                         end_date
                     ))
-                    print(f"Education at {edu.get('Institution name')} inserted.")
+                    print(f"Education at {
+                          edu.get('Institution name')} inserted.")
                 else:
                     print("Unexpected education entry format.")
             except Exception as e:
@@ -339,11 +300,13 @@ def format_applicant_data(rows):
                         'Default Project',  # Default project description
                         'Default Project'  # Default project name
                     ))
-                    print(f"Customer experience (from job experience) at {job_exp.get('Company name', 'Unknown Company')} inserted.")
+                    print(f"Customer experience (from job experience) at {
+                          job_exp.get('Company name', 'Unknown Company')} inserted.")
                 else:
                     print("Unexpected job experience entry format.")
             except Exception as e:
-                print(f"Failed to insert job experience at {job_exp.get('Company name', 'Unknown Company')}: {e}")
+                print(f"Failed to insert job experience at {
+                      job_exp.get('Company name', 'Unknown Company')}: {e}")
     else:
         print("Job Experience data type mismatch.")
 
@@ -364,13 +327,20 @@ def format_applicant_data(rows):
                         cert.get('Issue date', None),
                         cert.get('Expiry date', None)
                     ))
-                    print(f"Certification '{cert.get('Certification name', 'Unknown Certification')}' inserted.")
+                    print(f"Certification '{
+                          cert.get('Certification name', 'Unknown Certification')}' inserted.")
                 else:
                     print("Unexpected certification entry format.")
             except Exception as e:
-                print(f"Failed to insert certification '{cert.get('Certification name', 'Unknown Certification')}': {e}")
+                print(f"Failed to insert certification '{
+                      cert.get('Certification name', 'Unknown Certification')}': {e}")
     else:
         print("Certifications data type mismatch.")
     # Commit all changes to the database
     db_conn.commit()
     print(f"All data for applicant {applicant_id} committed successfully.")
+
+def start_polling():
+    poller = threading.Thread(target=poll_db_for_new_data)
+    poller.daemon = True  # Ensures thread will close when main program exits
+    poller.start()
