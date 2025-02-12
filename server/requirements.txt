@@ -24,6 +24,7 @@ Deprecated==1.2.14
 distro==1.9.0
 docxcompose==1.4.0
 docxtpl==0.18.0
+et_xmlfile==2.0.0
 filelock==3.15.4
 Flask==3.0.3
 Flask-Cors==4.0.1
@@ -87,6 +88,7 @@ mysql-connector-python==9.0.0
 networkx==3.3
 numpy==1.26.4
 oauthlib==3.2.2
+openpyxl==3.1.5
 opentelemetry-api==1.27.0
 opentelemetry-sdk==1.27.0
 opentelemetry-semantic-conventions==0.48b0
@@ -98,7 +100,6 @@ pillow==10.4.0
 portalocker==2.10.1
 proto-plus==1.24.0
 protobuf==4.25.4
-psycopg2==2.9.9
 pyasn1==0.6.0
 pyasn1_modules==0.4.0
 pycparser==2.22
@@ -144,3 +145,4 @@ urllib3==2.2.2
 Werkzeug==3.0.3
 wrapt==1.16.0
 yarl==1.9.4
+zipp==3.20.2

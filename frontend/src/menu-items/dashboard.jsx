@@ -20,14 +20,6 @@ const dashboard = {
       url: '/dashboard/default',
       icon: icons.DashboardOutlined,
       breadcrumbs: false
-    },
-    {
-      id: 'applicantdata',
-      title: 'Chatbot',
-      type: 'item',
-      url: '/dashboard/applicantdata',
-      icon: icons.DashboardOutlined,
-      breadcrumbs: false
     }
   ]
 };
