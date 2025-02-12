@@ -4,10 +4,11 @@ from dotenv import load_dotenv
 from app import create_app
 
 
-load_dotenv(dotenv_path='../.env')
+dotenv_path = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".env"))
+load_dotenv(dotenv_path=dotenv_path)  # Load environment variables
 
-host = os.getenv('FLASK_HOST', '0.0.0.0')
-port = int(os.getenv('FLASK_PORT', 5180))  # Default to 5000 if not set
+host = os.getenv('FLASK_HOST', '127.0.0.1')
+port = int(os.getenv('FLASK_PORT', 5000))  # Default to 5000 if not set
 debug = os.getenv('FLASK_DEBUG', 'False').lower() in [
     'true', '1', 't']  # Convert to boolean
 
