@@ -1,27 +1,20 @@
-# app/__init__.py
-
 from flask import Flask
-from .record_blueprint import record_blueprint
-from .bot_blueprint import bot_blueprint
-from .cv_blueprint import cv_blueprint
-from .polling_blueprint import start_polling
+from dotenv import load_dotenv
 from flask_cors import CORS
 import os
 
+# Load environment variables
+load_dotenv()
+
+# Initialize the Flask app
+
 
 def create_app():
-    static_folder_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), '../static')
+    app = Flask(__name__, static_folder='static')
+    CORS(app)
 
-  # Set the static folder path
-    app = Flask(__name__, static_folder=static_folder_path)
+    # Register the quotation blueprint from the correct path
+    from app.routes.quotation_routes import quotation_bp
+    app.register_blueprint(quotation_bp)
 
-    CORS(app)  # Enable CORS for all routes
-
-    # Register blueprints
-    app.register_blueprint(record_blueprint)
-    app.register_blueprint(bot_blueprint)
-    app.register_blueprint(cv_blueprint)
-
-    # Additional configuration can go here
-    start_polling()  # This will initiate polling in a separate thread
     return app

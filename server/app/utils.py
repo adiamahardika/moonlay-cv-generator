@@ -1,376 +1,467 @@
-import mysql.connector
-import re
+from datetime import datetime
+from flask import jsonify
+from openpyxl.styles import Alignment, Border, Side, PatternFill, Font,  NamedStyle
+from openpyxl import load_workbook
 import os
-import pandas as pd
+import logging
+import subprocess
+
+def format_date(date_str):
+    try:
+        # Attempt to parse full date-time with timezone
+        date_obj = datetime.strptime(date_str, "%a, %d %b %Y %H:%M:%S %Z")
+        return date_obj.strftime("%B %d, %Y")
+    except ValueError:
+        try:
+            # Strip timezone manually and parse
+            date_str = date_str.split(" GMT")[0]  # Remove GMT or similar
+            date_obj = datetime.strptime(date_str, "%a, %d %b %Y %H:%M:%S")
+            return date_obj.strftime("%B %d, %Y")
+        except ValueError:
+            try:
+                # Try an alternative format: "YYYY-MM-DD"
+                date_obj = datetime.strptime(date_str, "%Y-%m-%d")
+                return date_obj.strftime("%B %d, %Y")
+            except ValueError:
+                # If all parsing fails, return the original string
+                return date_str
 
 
-def get_db_connection():
-    return mysql.connector.connect(
-        host=os.getenv("DB_HOST"),
-        user=os.getenv("DB_USER"),
-        password=os.getenv("DB_PASSWORD"),
-        database=os.getenv("DB_NAME"),
-
-        port=int(os.getenv("DB_PORT"))
+# Define a function to create a currency style with prefix
+def create_currency_style(prefix):
+    return NamedStyle(
+        name=f"{prefix}_Currency",
+        number_format=f'"{prefix}" @'
     )
 
-def parse_customer_experience(customer_experience_str):
-    positions = []
-    employers = []
-    start_dates = []
-    end_dates = []
-    projects = []
 
-    # Split customer experiences using the '*' character
-    customer_entries = customer_experience_str.strip().split(',')
+# Create styles for different currencies
+currency_styles = {
+    "IDR": create_currency_style("Rp"),
+    "SGD": create_currency_style("S$"),
+    "USD": create_currency_style("$"),
+}
 
-    for entry in customer_entries:
-        entry = entry.strip()
-        if not entry:
-            continue  # Skip empty entries
-
-        # Split position, employer, and dates
-        parts = entry.split(':')
-        if len(parts) != 2:
-            continue  # Skip malformed entries
-
-        position_employer = parts[0].strip().split('|')
-        if len(position_employer) != 2:
-            continue  # Skip malformed entries
-
-        position = position_employer[0].strip()
-        employer = position_employer[1].strip()
-        dates = parts[1].strip().split('/')
-        start_date = dates[0].strip()
-        end_date = dates[1].strip() if len(dates) > 1 else 'Present'
-
-        # Clean dates
-        start_date = re.sub(r'[^0-9/-]', '', start_date) or 'Not Specified'
-        end_date = re.sub(r'[^0-9/-]', '', end_date) or 'Present'
-
-        # Append values to lists
-        positions.append(position)
-        employers.append(employer)
-        start_dates.append(start_date)
-        end_dates.append(end_date)
-
-        # Extract project name for customer experience
-        project_name = parts[1].strip().split(
-            '*')[-1] if '*' in parts[1] else ''
-        projects.append(project_name.strip())
-
-    # Create DataFrame for customer experience
-    return pd.DataFrame({
-        'Position': positions,
-        'Employer': employers,
-        'Start Date': start_dates,
-        'End Date': end_dates,
-        'Project Name': projects
-    })
-
-def parse_education(group_concat_string):
-    # List to store parsed education details
-    parsed_education = []
-
-    # Regular expression pattern to capture institution, degree title, start, and end dates
-    # This assumes a format like: "Institution Name - Degree Title (start_date / end_date)"
-    pattern = r'([^,]+?) - ([^()]+?) \(([^/]+?) / ([^)]+?)\)'
-
-    # Find all matches in the input string
-    matches = re.findall(pattern, group_concat_string)
-
-    print(f"Debug: matches = {matches}")
-
-    # Process each match
-    for match in matches:
-        institution, degree_title, start_date, end_date = match
-        # Append each parsed entry as a dictionary
-        parsed_education.append({
-            'institution_name': institution.strip(),
-            'degree_title': degree_title.strip(),
-            'start_date': start_date.strip(),
-            'end_date': end_date.strip()
-        })
-
-    return parsed_education
-
-def parse_job_experience(job_experience_str):
-    positions = []
-    employers = []
-    start_dates = []
-    end_dates = []
-
-    # Split job experiences by comma
-    job_entries = job_experience_str.strip().split(',')
-
-    for entry in job_entries:
-        entry = entry.strip()
-        if not entry:
-            continue  # Skip empty entries
-
-        # Split position and employer, then dates
-        parts = entry.split(':')
-        if len(parts) != 2:
-            continue  # Skip malformed entries
-
-        position_employer = parts[0].strip().split('|')
-        if len(position_employer) != 2:
-            continue  # Skip malformed entries
-
-        position = position_employer[0].strip()
-        employer = position_employer[1].strip()
-        dates = parts[1].strip().split('/')
-        start_date = dates[0].strip()
-        end_date = dates[1].strip() if len(dates) > 1 else 'Present'
-
-        # Clean dates
-        start_date = re.sub(r'[^0-9/-]', '', start_date) or 'Not Specified'
-        end_date = re.sub(r'[^0-9/-]', '', end_date) or 'Present'
-
-        # Append values to lists
-        positions.append(position)
-        employers.append(employer)
-        start_dates.append(start_date)
-        end_dates.append(end_date)
-
-    # Create DataFrame for job experience
-    return pd.DataFrame({
-        'Position': positions,
-        'Employer': employers,
-        'Start Date': start_dates,
-        'End Date': end_dates
-    })
-
-def format_applicant_data(rows):
-    formatted_data = []
-    for applicant in rows:
-        formatted_applicant = {
-            "applicant_id": applicant["applicant_id"],
-            "applicant_name": applicant["applicant_name"],
-            "applicant_gender": applicant["applicant_gender"],
-            "applicant_dateofbirth": applicant["applicant_dateofbirth"],
-            "applicant_nationality": applicant["applicant_nationality"],
-            "applicant_address": applicant["applicant_address"],
-            "applicant_city": applicant["applicant_city"],
-            "applicant_contact": applicant["applicant_contact"],
-            "applicant_email": applicant["applicant_email"],
-            "applicant_dateofapplication": applicant["applicant_dateofapplication"],
-            "applicant_resumelink": applicant["applicant_resumelink"],
-            "visibility": applicant["visibility"],
-            "programming_skills": applicant["programming_skills"] if applicant["programming_skills"] else 'None',
-            "product_knowledge_skills": applicant["product_knowledge_skills"] if applicant["product_knowledge_skills"] else 'None',
-            "known_languages": applicant["known_languages"] if applicant["known_languages"] else 'None',
-            "operating_systems": applicant["operating_systems"] if applicant["operating_systems"] else 'None',
-            "project_methodologies": applicant["project_methodologies"] if applicant["project_methodologies"] else 'None',
-            "other_skills": applicant["other_skills"] if applicant["other_skills"] else 'None',
-            "job_experiences": applicant["job_experiences"] if applicant["job_experiences"] else 'No job experience available.',
-            "customer_experiences": applicant["customer_experiences"] if applicant["customer_experiences"] else 'No customer experience available.',
-            "education": applicant["education"] if applicant["education"] else 'No education data available.',
-        }
-
-        # Formatting skills into HTML with spacing
-        formatted_applicant["applicant_skill"] = f"""
-            <b>Programming</b><br>{formatted_applicant["programming_skills"]}<br><br>
-            <b>Product Knowledge</b><br>{formatted_applicant["product_knowledge_skills"]}<br><br>
-            <b>Known Language</b><br>{formatted_applicant["known_languages"]}<br><br>
-            <b>Operating System</b><br>{formatted_applicant["operating_systems"]}<br><br>
-            <b>Project Methodology</b><br>{formatted_applicant["project_methodologies"]}<br><br>
-            <b>Other</b><br>{formatted_applicant["other_skills"]}<br><br>
-        """
-
-        # Formatting education
-        formatted_applicant["applicant_education"] = f"""
-            <br>{formatted_applicant["education"]}<br><br>
-        """
-
-        # Adding the formatted applicant to the list
-        formatted_data.append(formatted_applicant)
-
-    return formatted_data
+# Default to USD if the currency type is not found
 
 
-    if not extracted_data:
-        print("No valid data extracted to insert.")
-        return
+def get_currency_style(currency_type):
+    return currency_styles.get(currency_type, currency_styles["USD"])
 
-    cursor = db_conn.cursor()
 
-    # Insert Applicant details with error checking
-    try:
-        applicant_details = extracted_data.get('Applicant Details', {})
-        if isinstance(applicant_details, dict):
-            applicant_query = """
-            INSERT INTO applicant (applicant_id, applicant_name, applicant_gender, applicant_dateofbirth, applicant_nationality, applicant_address, applicant_city, applicant_contact, applicant_email, applicant_dateofapplication, applicant_resumelink, visibility)
-            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, 1)
-            """
-            cursor.execute(applicant_query, (
-                applicant_id,
-                applicant_details.get('Full name'),
-                applicant_details.get('Gender', ''),
-                applicant_details.get('Date of birth', '00-00-0000'),
-                applicant_details.get('Nationality', 'Indonesia'),
-                applicant_details.get('Address'),
-                applicant_details.get('City'),
-                applicant_details.get('Contact number'),
-                applicant_details.get('Email'),
-                date_applied,
-                raw_resumelink,
-            ))
-            print(f"Applicant details inserted for ID {applicant_id}.")
-        else:
-            print("Applicant details data type mismatch.")
-    except Exception as e:
-        print(f"Failed to insert applicant details for ID {applicant_id}: {e}")
+def generate_quotation_file(data, quotation_code, quotation_type):
+    template_dir = "static/templates"
+    output_dir = "static/xlsx"
+    output_pdf_dir = "static/pdf"
+    
+    
+    
+    
+    template_file = os.path.join(
+        template_dir, "VMS.xlsx" if quotation_type == "VMS" else "Project.xlsx"
+    )
 
-    # Insert Education with error checking
-    education_data = extracted_data.get('Education', [])
-    if isinstance(education_data, list):
-        for edu in education_data:
-            try:
-                if isinstance(edu, dict):
-                    education_query = """
-                    INSERT INTO education (applicant_id, institution_name, degree_title, start_date, end_date)
-                    VALUES (%s, %s, %s, %s, %s)
-                    """
-                    # Get the start and end dates directly from the dictionary
-                    start_date = edu.get('Education Start date', '')
-                    end_date = edu.get('Education End date', '')
+    output_file = f"{quotation_code.replace('/', '_')}.xlsx"
+    output_path = os.path.join(output_dir, output_file)
 
-                    cursor.execute(education_query, (
-                        applicant_id,
-                        edu.get('Institution name'),
-                        edu.get('Degree title'),
-                        start_date,
-                        end_date
-                    ))
-                    print(f"Education at {edu.get('Institution name')} inserted.")
-                else:
-                    print("Unexpected education entry format.")
-            except Exception as e:
-                print(f"Failed to insert education data: {e}")
+    if not os.path.exists(output_dir):
+        os.makedirs(output_dir)
+
+    workbook = load_workbook(template_file)
+    sheet = workbook.active
+
+    # Insert customer and quotation details
+    sheet["A7"] = data.get("quotation_customer", "")
+    sheet["A8"] = data.get("quotation_email", "")  # Insert email into A8
+    sheet["A10"] = data.get("quotation_customeraddress", "")
+    sheet["A9"] = data.get("quotation_pt", "")
+    sheet["F7"] = data.get("quotation_solution", "")  # Insert solution into F7
+
+    # Format the date values to "Month DD, YYYY" format
+
+    created_date = format_date(data.get("quotation_createdate", ""))
+
+    valid_date = format_date(data.get("quotation_validdate", ""))
+
+    print(created_date)
+    print(valid_date)
+
+    if quotation_type in ["BR", "PR"]:
+        sheet["G1"] = created_date
+        sheet["G2"] = valid_date
+        sheet["G3"] = quotation_code
     else:
-        print("Education data type mismatch.")
+        sheet["H1"] = created_date
+        sheet["H2"] = valid_date
+        sheet["H3"] = quotation_code
 
-    skills_data = extracted_data
-    if isinstance(skills_data, dict):
+    # Define border style (outline)
+    thin_border = Border(
+        left=Side(border_style="thin", color="000000"),
+        right=Side(border_style="thin", color="000000"),
+        top=Side(border_style="thin", color="000000"),
+        bottom=Side(border_style="thin", color="000000"),
+    )
+
+    
+    alignment_left = Alignment(horizontal="left", vertical="center")
+    alignment_right = Alignment(horizontal="right")
+
+    expenses = data.get("expenses", [])
+    start_row = 15  # Starting row for expenses
+    
+    currency_type = data.get("currency_type", "USD")
+    currency_style = get_currency_style(currency_type)
+
+    for i, expense in enumerate(expenses):
         try:
-            # Directly extract skills as strings from the JSON
-            programming_skill = skills_data.get('Programming Skills')
-            productknowledge_skill = skills_data.get(
-                'Product Knowledge Skills')
-            technologyknowledge_skill = skills_data.get(
-                'Technology Skills')  # Adjust if needed
-            knownlanguage_skill = skills_data.get(
-                'Language Skills', 'Bahasa Indonesia')  # Default value
-            operatingsystem_skill = skills_data.get('Operating System Skills')
-            projectmethodology_skill = skills_data.get(
-                'Project Methodology Skills')
-            other_skill = skills_data.get('Other Relevant Skills')
+            # Insert data into the respective columns
+            sheet[f"A{start_row}"] = i + 1  # No column
+            sheet[f"A{start_row}"].font = Font(name="Calibri")
+            sheet[f"B{start_row}"] = expense.get("expense_description", "")
+            sheet[f"B{start_row}"].font = Font(name="Calibri")
+          
 
-            # Debug: Print values to be inserted
-            print("Inserting skills data:")
-            print(f"Applicant ID: {applicant_id}")
-            print(f"Programming Skill: {programming_skill}")
-            print(f"Product Knowledge Skill: {productknowledge_skill}")
-            print(f"Technology Knowledge Skill: {technologyknowledge_skill}")
-            print(f"Operating System Skill: {operatingsystem_skill}")
-            print(f"Project Methodology Skill: {projectmethodology_skill}")
-            print(f"Other Skill: {other_skill}")
-            print(f"Known Language Skill: {knownlanguage_skill}")
+            # Merge cells and add borders
+            if quotation_type in ["BR", "PR"]:
+                sheet.merge_cells(f"A{start_row}:A{start_row + 1}")
+                sheet.merge_cells(f"B{start_row}:E{start_row + 1}")
+                sheet.merge_cells(f"F{start_row}:F{start_row + 1}")
+                sheet.merge_cells(f"G{start_row}:G{start_row + 1}")
+                
+                
+                sheet[f"F{start_row}"] = expense.get("expense_total", 0)
+                sheet[f"F{start_row}"].style = currency_style
+                sheet[f"F{start_row}"].font = Font(name="Calibri")
+                sheet[f"F{start_row}"].alignment = alignment_right
+                
+                
+                sheet[f"G{start_row}"] = expense.get("expense_linecount", 0)
+                sheet[f"G{start_row}"].style = currency_style
+                sheet[f"G{start_row}"].font = Font(name="Calibri", bold=True)
+                sheet[f"G{start_row}"].alignment = alignment_right
+                
 
-            skill_query = """
-            INSERT INTO skills (applicant_id, programming_skill, productknowledge_skill, technologyknowledge_skill, operatingsystem_skill, projectmethodology_skill, other_skill, knownlanguage_skill)
-            VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
-            """
+                for row in range(start_row, start_row + 2):
+                    for col in ["A", "B", "C", "D", "E", "F", "G"]:
+                        sheet[f"{col}{row}"].border = thin_border
+            else:
+                sheet.merge_cells(f"A{start_row}:A{start_row + 1}")
+                sheet.merge_cells(f"B{start_row}:E{start_row + 1}")
+                sheet.merge_cells(f"F{start_row}:F{start_row + 1}")
+                sheet.merge_cells(f"G{start_row}:G{start_row + 1}")
+                sheet.merge_cells(f"H{start_row}:H{start_row + 1}")
 
-            # Execute the insertion
-            cursor.execute(skill_query, (
-                applicant_id,
-                programming_skill,
-                productknowledge_skill,
-                technologyknowledge_skill,
-                operatingsystem_skill,
-                projectmethodology_skill,
-                other_skill,
-                knownlanguage_skill
-            ))
-            print(f"Skills inserted for applicant ID {applicant_id}.")
+                sheet[f"F{start_row}"] = expense.get("expense_total", 0)
+                sheet[f"F{start_row}"].style = currency_style
+                sheet[f"F{start_row}"].font = Font(name="Calibri")
+                sheet[f"F{start_row}"].alignment = alignment_right
+                
+                
+                
+                sheet[f"G{start_row}"] = expense.get("expense_discount", 0)
+                sheet[f"G{start_row}"].font = Font(name="Calibri")
+                sheet[f"G{start_row}"].alignment = Alignment(horizontal="center")
+                
+                sheet[f"H{start_row}"] = expense.get("expense_linecount", 0)
+                sheet[f"H{start_row}"].style = currency_style
+                sheet[f"H{start_row}"].font = Font(name="Calibri", bold=True)
+                sheet[f"H{start_row}"].alignment = alignment_right
+                
+                
+                
+                for row in range(start_row, start_row + 2):
+                    for col in ["A", "B", "C", "D", "E", "F", "G", "H"]:
+                        sheet[f"{col}{row}"].border = thin_border
+
+            for col in ["A", "B", "F", "G", "H"]:
+                for row in range(start_row, start_row + 2):
+                    if col in ["F", "H"]:
+                        sheet[f"{col}{row}"].alignment = Alignment(
+                            horizontal="right", vertical="center"
+                        )
+                    else:
+                        sheet[f"{col}{row}"].alignment = Alignment(
+                            horizontal="center", vertical="center"
+                        )
+
+            start_row += 2
         except Exception as e:
-            print(f"Failed to insert skills for applicant ID {applicant_id}: {e}")
+            print(f"Error processing expense {i + 1}: {e}")
+            
+    vat_rate = data.get("vat_rate", "11%")  # Default to "11%" if vat_rate is missing
+    vat_rate_label = f"Vat ({vat_rate})%"  # Create the label dynamically
+
+    if quotation_type == "VMS":
+        summary_rows = [
+            ("Subtotal", data.get("quotation_subtotal", 0), "FFBFBFBF"),
+            ("Management Fee 5%", data.get("quotation_managementfee", 0), "FFBFBFBF"),
+            (vat_rate_label, data.get("quotation_ppn", 0), "FFD8D8D8"),
+            ("Grand Total", data.get("quotation_grandtotal", 0), "FF01205E"),
+        ]
+
+    elif quotation_type in ["BR", "PR"]:
+        summary_rows = [
+            ("Subtotal", data.get("quotation_subtotal", 0), "FFBFBFBF"),
+            (vat_rate_label, data.get("quotation_ppn", 0), "FFD8D8D8"),
+            ("Grand Total", data.get("quotation_grandtotal", 0), "FF01205E"),
+        ]
+
+    # Insert summary rows into the sheet
+    for i, (field_name, field_value, color) in enumerate(summary_rows):
+       
+
+        # Merge cells for label column (A to G for BR/PR, A to H for VMS)
+        if quotation_type in ["BR", "PR"]:
+            # Merge A-F for label
+            for row in range(start_row, start_row + 1):
+                for col in range(1, 7):  # Columns A to F
+                    sheet.cell(row=row, column=col).border = thin_border
+            sheet.merge_cells(f"A{start_row}:F{start_row}")
+            value_column = "G"  # Value in column G
+        else:
+            for row in range(start_row, start_row + 1):
+                for col in range(1, 8):  # Columns A to F
+                    sheet.cell(row=row, column=col).border = thin_border
+            sheet.merge_cells(f"A{start_row}:G{start_row}")
+            value_column = "H"  # Value in column H
+
+        # Set the label cell value and style
+        label_cell = sheet[f"A{start_row}"]
+        label_cell.value = field_name
+        label_cell.fill = PatternFill(
+            start_color=color, end_color=color, fill_type="solid")
+        label_cell.alignment = alignment_right
+        label_cell.font = Font(
+            name="Calibri",  bold=True, color="FFFFFF" if field_name == "Grand Total" else "000000"
+        )
+        label_cell.border = thin_border
+
+        # Set the value cell with the appropriate style
+        value_cell = sheet[f"{value_column}{start_row}"]
+        value_cell.value = field_value
+        value_cell.style = currency_style
+        value_cell.alignment = alignment_right
+        value_cell.font = Font(name="Calibri", bold=True)
+        value_cell.border = thin_border
+       
+        
+        start_row += 1
+
+   # Outline the cells and merge them
+    if quotation_type in ["BR", "PR"]:
+        for col in range(1, 8):  # Columns A (1) to G (7)
+            cell = sheet.cell(row=start_row, column=col)
+            cell.border = Border(top=thin_border.top, bottom=thin_border.bottom)  # Apply top and bottom borders only
+        sheet.merge_cells(f"A{start_row}:G{start_row}")
     else:
-        print("Skills data type mismatch.")
+        for col in range(1, 9):  # Columns A (1) to H (8)
+            cell = sheet.cell(row=start_row, column=col)
+            cell.border = Border(top=thin_border.top, bottom=thin_border.bottom)  # Apply top and bottom borders only
+        sheet.merge_cells(f"A{start_row}:H{start_row}")
 
-    # Insert Job Experience with duplication into Customer Experience
-    job_experiences = extracted_data.get('Work Experience', [])
-    if isinstance(job_experiences, list):
-        for job_exp in job_experiences:
-            try:
-                if isinstance(job_exp, dict):
-                    job_query = """
-                    INSERT INTO jobexperience (applicant_id, company_name, position, start_date, end_date)
-                    VALUES (%s, %s, %s, %s, %s)
-                    """
 
-                    # Extracting start and end dates directly from JSON
-                    start_date = job_exp.get('Work Start date', None)
-                    end_date = job_exp.get('Work end dates', None)
+    # Insert Terms and Conditions (TOS)
+    tos_data = data.get("terms_and_conditions", [])
+    start_row += 1  # Move to the row below the summary section
 
-                    cursor.execute(job_query, (
-                        applicant_id,
-                        job_exp.get('Company name', None),
-                        job_exp.get('Position', None),
-                        start_date,
-                        end_date
-                    ))
-                    print(f"Job experience at {job_exp.get(
-                        'Company name', 'Unknown Company')} inserted.")
-
-                    # Insert into Customer Experience with default values for missing columns
-                    customer_exp_query = """
-                    INSERT INTO customerexperience (applicant_id, company_name, position, start_date, end_date, project_description, project_name)
-                    VALUES (%s, %s, %s, %s, %s, %s, %s)
-                    """
-                    cursor.execute(customer_exp_query, (
-                        applicant_id,
-                        job_exp.get('Company name', None),
-                        job_exp.get('Position', None),
-                        start_date,
-                        end_date,
-                        'Default Project',  # Default project description
-                        'Default Project'  # Default project name
-                    ))
-                    print(f"Customer experience (from job experience) at {job_exp.get('Company name', 'Unknown Company')} inserted.")
-                else:
-                    print("Unexpected job experience entry format.")
-            except Exception as e:
-                print(f"Failed to insert job experience at {job_exp.get('Company name', 'Unknown Company')}: {e}")
+    # Determine the merge range based on quotation type
+    if quotation_type in ["BR", "PR"]:
+        merge_columns = "G"
+        last_col = 7  # Column G
     else:
-        print("Job Experience data type mismatch.")
+        merge_columns = "H"
+        last_col = 8  # Column H
 
-     # Insert Certifications
-    certifications = extracted_data.get('Certifications', [])
-    if isinstance(certifications, list):
-        for cert in certifications:
-            try:
-                if isinstance(cert, dict):
-                    certification_query = """
-                    INSERT INTO certification (applicant_id, certification_name, issued_by, issue_date, expiry_date)
-                    VALUES (%s, %s, %s, %s, %s)
-                    """
-                    cursor.execute(certification_query, (
-                        applicant_id,
-                        cert.get('Certification name', None),
-                        cert.get('Issued by', None),
-                        cert.get('Issue date', None),
-                        cert.get('Expiry date', None)
-                    ))
-                    print(f"Certification '{cert.get('Certification name', 'Unknown Certification')}' inserted.")
-                else:
-                    print("Unexpected certification entry format.")
-            except Exception as e:
-                print(f"Failed to insert certification '{cert.get('Certification name', 'Unknown Certification')}': {e}")
+    # Add header for Terms and Conditions
+    for col in range(1, last_col + 1):  # Apply styling before merging
+        cell = sheet.cell(row=start_row, column=col)
+        cell.value = "Terms and Conditions" if col == 1 else None
+        cell.alignment = Alignment(horizontal="center", vertical="center")
+        cell.font = Font(bold=True, color="FFFFFF", name="Calibri")
+        cell.fill = PatternFill(
+            start_color="FF01205E", end_color="FF01205E", fill_type="solid"
+        )
+        cell.border = thin_border
+
+    sheet.merge_cells(f"A{start_row}:{merge_columns}{start_row}")  # Merge cells for the header
+
+    start_row += 1  # Move to the first TOS row
+
+    # Add TOS items
+    for i, tos in enumerate(tos_data):
+        tos_row = start_row + i
+
+        # Add TOS number (Column A) and apply borders
+        tos_number_cell = sheet.cell(row=tos_row, column=1)
+        tos_number_cell.value = i + 1
+        tos_number_cell.alignment = Alignment(
+            horizontal="center", vertical="center")
+        tos_number_cell.border = Border(
+            left=thin_border.left,
+            top=thin_border.top,
+            bottom=thin_border.bottom
+        )
+
+        # Apply styling to each cell before merging for the description
+        for col in range(2, last_col + 1):  # Columns B to G or B to H
+            cell = sheet.cell(row=tos_row, column=col)
+            if col == 2:  # First column of the description
+                cell.value = tos.get("tos_description", "")
+                cell.alignment = Alignment(horizontal="left", vertical="center")
+            # Apply borders for each cell
+            if col == last_col:  # Last column gets the right border
+                cell.border = Border(
+                    top=thin_border.top,
+                    bottom=thin_border.bottom,
+                    right=thin_border.right
+                )
+            else:  # Other columns get top and bottom borders only
+                cell.border = Border(
+                    top=thin_border.top,
+                    bottom=thin_border.bottom
+                )
+
+        # Merge description cells after applying styles and borders
+        sheet.merge_cells(f"B{tos_row}:{merge_columns}{tos_row}")
+
+    start_row += len(tos_data) + 2  # Adjust for TOS rows and spacing
+
+    # Add "Sincerely,"
+    if quotation_type in ["BR", "PR"]:
+        sheet.merge_cells(f"A{start_row}:G{start_row}")
     else:
-        print("Certifications data type mismatch.")
-    # Commit all changes to the database
-    db_conn.commit()
-    print(f"All data for applicant {applicant_id} committed successfully.")
+        sheet.merge_cells(f"A{start_row}:H{start_row}")
+        
+    sheet[f"A{start_row}"].value = "Sincerely,"
+    sheet[f"A{start_row}"].alignment = Alignment(
+        horizontal="left", vertical="center")
+    sheet[f"A{start_row}"].font = Font( name="Arial")
+    
+
+    # Add PIC name
+    start_row += 2
+    if quotation_type in ["BR", "PR"]:
+        sheet.merge_cells(f"A{start_row}:G{start_row}")
+    else:
+        sheet.merge_cells(f"A{start_row}:H{start_row}")
+    sheet[f"A{start_row}"].value = data.get("quotation_pic", "")
+    sheet[f"A{start_row}"].alignment = Alignment(
+        horizontal="left", vertical="center")
+    sheet[f"A{start_row}"].font = Font(bold=True, name="Arial")
+
+    # Add company name
+    start_row += 1
+    sheet.merge_cells(f"A{start_row}:C{start_row}")
+    sheet[f"A{start_row}"].value = "PT Moonlay Technologies"
+    sheet[f"A{start_row}"].alignment = Alignment(
+        horizontal="left", vertical="center")
+    sheet[f"A{start_row}"].font = Font(name="Arial")
+
+    # Add "Thank you for your business!"
+    start_row += 4
+    if quotation_type in ["BR", "PR"]:
+        sheet.merge_cells(f"A{start_row}:G{start_row}")
+    else:
+        sheet.merge_cells(f"A{start_row}:H{start_row}")
+    sheet[f"A{start_row}"].value = "Thank you for your business!"
+    sheet[f"A{start_row}"].font = Font(bold=True, name="Arial" )
+    sheet[f"A{start_row}"].alignment = Alignment(
+        horizontal="center", vertical="center")
+    
+    # Add contact details
+    start_row += 1
+    if quotation_type in ["BR", "PR"]:
+        sheet.merge_cells(f"A{start_row}:G{start_row}")
+    else:
+        sheet.merge_cells(f"A{start_row}:H{start_row}")
+    sheet[f"A{start_row}"].value = "Should you have any enquiries concerning this quote, please contact Murni on +62-823-6506-0216"
+    sheet[f"A{start_row}"].alignment = Alignment(
+        horizontal="center", vertical="center")
+    sheet[f"A{start_row}"].font = Font(name="Arial")
+
+    start_row += 1
+    if quotation_type in ["BR", "PR"]:
+        sheet.merge_cells(f"A{start_row}:G{start_row}")
+    else:
+        sheet.merge_cells(f"A{start_row}:H{start_row}")
+    sheet[f"A{start_row}"].value = "Equity Tower 25th Floor, Suite H, SCBD Lot. 9, Jln. Jenderal Sudirman Kav. 52-53 "
+    sheet[f"A{start_row}"].alignment = Alignment(
+        horizontal="center", vertical="center")
+    sheet[f"A{start_row}"].font = Font(name="Arial")
+
+    start_row += 1
+    if quotation_type in ["BR", "PR"]:
+        sheet.merge_cells(f"A{start_row}:G{start_row}")
+    else:
+        sheet.merge_cells(f"A{start_row}:H{start_row}")
+    sheet[f"A{start_row}"].value = "Kel. Senayan, Kec. Kebayoran Baru, Kota Administrasi Jakarta Selatan, Prov. DKI Jakarta 12190 "
+    sheet[f"A{start_row}"].alignment = Alignment(
+        horizontal="center", vertical="center")
+    sheet[f"A{start_row}"].font = Font(name="Arial")
+
+    start_row += 1
+    if quotation_type in ["BR", "PR"]:
+        sheet.merge_cells(f"A{start_row}:G{start_row}")
+    else:
+        sheet.merge_cells(f"A{start_row}:H{start_row}")
+    sheet[f"A{start_row}"].value = "Tel: (+62-21) 290-350-89 | Fax: (+62-21) 290-350-88 | E-mail: murni.telaumbanua@moonlay.com | Web: www.moonlay.com"
+    sheet[f"A{start_row}"].alignment = Alignment(
+        horizontal="center", vertical="center")
+    sheet[f"A{start_row}"].font = Font(name="Arial")
+
+    # Add "HIGHLY CONFIDENTIAL"
+    start_row += 2
+    if quotation_type in ["BR", "PR"]:
+        sheet.merge_cells(f"A{start_row}:G{start_row}")
+    else:
+        sheet.merge_cells(f"A{start_row}:H{start_row}")
+    sheet[f"A{start_row}"].value = "HIGHLY CONFIDENTIAL"
+    sheet[f"A{start_row}"].font = Font(bold=True, color="FF0000", name="Arial")
+    sheet[f"A{start_row}"].alignment = Alignment(
+        horizontal="center", vertical="center")
+
+    # Save the updated Excel file
+    workbook.save(output_path)
+    
+    if not os.path.exists(output_pdf_dir):
+        os.makedirs(output_pdf_dir)
+        
+    print(output_path)
+
+    # Generate absolute paths
+    pdf_file_name = f"{quotation_code.replace('/', '_')}.pdf"
+    pdf_output_path = os.path.join(output_pdf_dir, pdf_file_name)
+    
+
+    print("Source file path:", output_path)
+    print("Output directory path:", pdf_output_path)
+    
+
+    try:
+        result = subprocess.run(
+            [
+                "soffice",
+                "--headless",
+                "--convert-to",
+                "pdf",
+                "--outdir",
+                os.path.dirname(pdf_output_path),
+                os.path.abspath(output_path)
+            ],
+            check=True,
+            capture_output=True,
+            text=True
+        )
+        print("LibreOffice Output:", result.stdout)
+        print("LibreOffice Errors:", result.stderr)
+    except subprocess.CalledProcessError as e:
+        print(f"Error: {e.stderr}")
+        return jsonify({'error': 'Conversion to PDF failed', 'details': e.stderr}), 500
+
+
+    # Check if the PDF was created
+    return jsonify({
+        'xlsxUrl': f'/static/xlsx/{output_file}',
+        'pdfUrl': f'/static/pdf/{quotation_code.replace("/", "_")}.pdf'
+    }), 200
