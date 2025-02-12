@@ -1,6 +1,6 @@
 Important!
 
-# Setup For MoonlayQuotation
+# Setup For MoonlayHR
 ---------------------
 
 # Table of Contents
@@ -15,14 +15,14 @@ Important!
 
 # Overview
 
-This is MoonlayQuotation web application, its main functionality include the creation and processing of quotations.
+This is MoonlayHR web application, its main functionality include the creation and processing of cv and chatbot.
 
 ---------------------
 
 # Requirements
 
 - Python Version: 3.12.5
-- Environment Variable: GOOGLE_API_KEY, DB_URI, DB_HOST, DB_USER, DB_PASSWORD, DB_NAME, DB_PORT, FLASK_HOST, FLASK_PORT, FLASK_DEBUG, VITE_KEYCLOAK_URL, VITE_KEYCLOAK_CLIENT_ID, VITE_KEYCLOAK_REDIRECT_URI, VITE_API_BASE
+- Environment Variable: OPEN_AI_KEY, DB_URI, DB_HOST, DB_USER, DB_PASSWORD, DB_NAME, DB_PORT, FLASK_HOST, FLASK_PORT, FLASK_DEBUG, VITE_KEYCLOAK_URL, VITE_KEYCLOAK_CLIENT_ID, VITE_KEYCLOAK_REDIRECT_URI, VITE_API_BASE
 - Required Libraries: Refer to requirements.txt and yarn.lock
 
 ---------------------
@@ -63,6 +63,9 @@ This is MoonlayQuotation web application, its main functionality include the cre
    - the env file should contain the environment value for:
 
     ## Backend Environment Variables
+
+        OPENAI_API_KEY
+        Chatbot Api Key
 
         DB_URI
         Full database connection string for connecting to a MySQL database using mysql+mysqlconnector.
@@ -114,6 +117,6 @@ This is MoonlayQuotation web application, its main functionality include the cre
 
 1. Run the Program
    - navigate to the server folder, Run the command "flask run" to run the flask backend of the application.
-   - navigate to the mantine-template-main folder and run the command "yarn dev" to run the moonlayHR frontend.
+   - navigate to the mantine-template-main folder and run the command "yarn start dev" to run the moonlayHR frontend.
 
 ---------------------
