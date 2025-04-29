@@ -26,7 +26,7 @@ export const KeycloakProvider = ({ children }) => {
 
         const authenticated = await kc.init({
           onLoad: 'login-required',
-          redirectUri: import.meta.env.VITE_KEYCLOAK_REDIRECT_URI,
+          // redirectUri: import.meta.env.VITE_KEYCLOAK_REDIRECT_URI,
           checkLoginIframe: false,
           rememberMe: true
         });
