@@ -203,8 +203,7 @@ def parse_and_insert_data(db_conn, applicant_id, extracted_data, raw_resumelink,
                         start_date,
                         end_date
                     ))
-                    print(f"Education at {
-                          edu.get('Institution name')} inserted.")
+                    print(f"Education at {edu.get('Institution name')} inserted.")
                 else:
                     print("Unexpected education entry format.")
             except Exception as e:
@@ -283,8 +282,7 @@ def parse_and_insert_data(db_conn, applicant_id, extracted_data, raw_resumelink,
                         start_date,
                         end_date
                     ))
-                    print(f"Job experience at {job_exp.get(
-                        'Company name', 'Unknown Company')} inserted.")
+                    print(f"Job experience at {job_exp.get('Company name', 'Unknown Company')} inserted.")
 
                     # Insert into Customer Experience with default values for missing columns
                     customer_exp_query = """
@@ -300,13 +298,11 @@ def parse_and_insert_data(db_conn, applicant_id, extracted_data, raw_resumelink,
                         'Default Project',  # Default project description
                         'Default Project'  # Default project name
                     ))
-                    print(f"Customer experience (from job experience) at {
-                          job_exp.get('Company name', 'Unknown Company')} inserted.")
+                    print(f"Customer experience (from job experience) at {job_exp.get('Company name', 'Unknown Company')} inserted.")
                 else:
                     print("Unexpected job experience entry format.")
             except Exception as e:
-                print(f"Failed to insert job experience at {
-                      job_exp.get('Company name', 'Unknown Company')}: {e}")
+                print(f"Failed to insert job experience at {job_exp.get('Company name', 'Unknown Company')}: {e}")
     else:
         print("Job Experience data type mismatch.")
 
@@ -327,13 +323,11 @@ def parse_and_insert_data(db_conn, applicant_id, extracted_data, raw_resumelink,
                         cert.get('Issue date', None),
                         cert.get('Expiry date', None)
                     ))
-                    print(f"Certification '{
-                          cert.get('Certification name', 'Unknown Certification')}' inserted.")
+                    print(f"Certification '{cert.get('Certification name', 'Unknown Certification')}' inserted.")
                 else:
                     print("Unexpected certification entry format.")
             except Exception as e:
-                print(f"Failed to insert certification '{
-                      cert.get('Certification name', 'Unknown Certification')}': {e}")
+                print(f"Failed to insert certification '{cert.get('Certification name', 'Unknown Certification')}': {e}")
     else:
         print("Certifications data type mismatch.")
     # Commit all changes to the database

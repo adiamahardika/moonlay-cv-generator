@@ -322,8 +322,7 @@ def format_applicant_data(rows):
                         start_date,
                         end_date
                     ))
-                    print(f"Job experience at {job_exp.get(
-                        'Company name', 'Unknown Company')} inserted.")
+                    print(f"Job experience at {job_exp.get('Company name', 'Unknown Company')} inserted.")
 
                     # Insert into Customer Experience with default values for missing columns
                     customer_exp_query = """
