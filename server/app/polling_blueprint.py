@@ -5,14 +5,14 @@ import time
 import mysql.connector
 from .utils import get_db_connection
 import json
-from langchain_google_genai import ChatGoogleGenerativeAI
+from langchain_google_genai import ChatGoogleGenerativeAI as GoogleChat
 from langchain_community.agent_toolkits.sql.toolkit import SQLDatabaseToolkit
 from langchain_community.agent_toolkits.sql.base import create_sql_agent
 from langchain.memory import ConversationBufferWindowMemory
 from langchain_community.utilities import SQLDatabase
 from langchain.prompts import PromptTemplate
 
-llm = ChatGoogleGenerativeAI(model="gemini-pro", temperature=0.3)
+llm = GoogleChat(model="gemini-pro", temperature=0.3)
 
 def poll_db_for_new_data():
     while True:

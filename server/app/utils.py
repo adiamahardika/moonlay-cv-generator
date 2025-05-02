@@ -2,17 +2,15 @@ import mysql.connector
 import re
 import os
 import pandas as pd
+from sqlalchemy import create_engine
+from sqlalchemy.orm import scoped_session, sessionmaker
+
+engine = create_engine(os.getenv("HR_DB_URI"))
+db_session = scoped_session(sessionmaker(autocommit=False, autoflush=False, bind=engine))
 
 
 def get_db_connection():
-    return mysql.connector.connect(
-        host=os.getenv("DB_HOST"),
-        user=os.getenv("DB_USER"),
-        password=os.getenv("DB_PASSWORD"),
-        database=os.getenv("DB_NAME"),
-
-        port=int(os.getenv("DB_PORT"))
-    )
+    return db_session()
 
 def parse_customer_experience(customer_experience_str):
     positions = []
