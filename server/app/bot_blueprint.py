@@ -13,7 +13,7 @@ bot_blueprint = Blueprint('bot', __name__)
 # os.environ["GOOGLE_API_KEY"] = os.getenv("GOOGLE_API_KEY")
 
 os.environ["OPENAI_API_KEY"] = os.getenv("OPENAI_API_KEY")
-db = SQLDatabase.from_uri(os.getenv("DB_URI"))
+db = SQLDatabase.from_uri(os.getenv("HR_DB_URI"))
 
 # Initialize the LLM with the Google Generative AI model
 # llm = ChatGoogleGenerativeAI(model="gemini-pro", temperature=0.3)
