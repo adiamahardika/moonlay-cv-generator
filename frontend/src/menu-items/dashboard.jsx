@@ -1,9 +1,10 @@
 // assets
-import { DashboardOutlined } from '@ant-design/icons';
+import { DashboardOutlined, UploadOutlined } from '@ant-design/icons';
 
 // icons
 const icons = {
-  DashboardOutlined
+  DashboardOutlined,
+  UploadOutlined 
 };
 
 // ==============================|| MENU ITEMS - DASHBOARD ||============================== //
@@ -27,6 +28,14 @@ const dashboard = {
       type: 'item',
       url: '/dashboard/applicantdata',
       icon: icons.DashboardOutlined,
+      breadcrumbs: false
+    },
+    {
+      id: 'uploadcv',
+      title: 'Upload',
+      type: 'item',
+      url: '/dashboard/upload-cv-manual', 
+      icon: icons.UploadOutlined,        
       breadcrumbs: false
     }
   ]
