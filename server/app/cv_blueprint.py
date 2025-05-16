@@ -4,27 +4,25 @@ import re
 from docxtpl import DocxTemplate
 import mysql.connector
 import subprocess
-from .utils import get_db_connection, parse_job_experience, parse_customer_experience, parse_education
+from werkzeug.utils import secure_filename
+from datetime import datetime
+from .utils import parse_job_experience, parse_customer_experience, parse_education
 
 cv_blueprint = Blueprint('cv', __name__, static_folder='../static')
 
-
+# ============================
+# == [ROUTE] Generate CV ==
+# ============================
 @cv_blueprint.route('/generate-cv', methods=['POST'])
 def generate_cv():
     try:
-        # Extract the applicant's ID from the request
         data = request.get_json()
-        print(f"Received data: {data}")
-
-        # Make sure to use the correct key
         applicant_id = data.get('applicantid')
         applicant_name = data.get('applicantname')
 
-        # Check if applicant_id is provided
         if not applicant_id:
             return jsonify({'error': 'Applicant ID is required'}), 400
 
-        # Base query
         query = """
         SELECT 
             a.applicant_name,
@@ -49,15 +47,13 @@ def generate_cv():
         LEFT JOIN education e ON a.applicant_id = e.applicant_id
         LEFT JOIN certification cert ON a.applicant_id = cert.applicant_id
         LEFT JOIN skills s ON a.applicant_id = s.applicant_id
-        WHERE a.applicant_id = %s  -- Use applicant_id for filtering
+        WHERE a.applicant_id = %s
         """
 
-        # Connect to the database
         conn = get_db_connection()
         cursor = conn.cursor(dictionary=True)
 
         try:
-            # Execute the query with the applicant_id parameter
             cursor.execute(query, (applicant_id,))
             applicant = cursor.fetchone()
         finally:
@@ -67,18 +63,16 @@ def generate_cv():
         if not applicant:
             return jsonify({'error': 'Applicant not found'}), 404
 
-        # Extracting applicant data with None checks
+        # Data parsing
         applicant_job_experience = applicant.get('job_experiences', '')
-        applicant_customer_experience = applicant.get(
-            'customer_experiences', '')
+        applicant_customer_experience = applicant.get('customer_experiences', '')
         applicant_city = applicant.get('applicant_city', '')
         applicant_dob = applicant.get('applicant_dateofbirth', '')
         applicant_gender = applicant.get('applicant_gender', '')
         applicant_certification = applicant.get('certifications', '')
         applicant_education = applicant.get('education', '')
         programming_skills = applicant.get('programming_skills', '')
-        product_knowledge_skills = applicant.get(
-            'product_knowledge_skills', '')
+        product_knowledge_skills = applicant.get('product_knowledge_skills', '')
         technology_knowledge_skills = applicant.get('technology_skills', '')
         operating_systems = applicant.get('operating_systems', '')
         project_methodologies = applicant.get('project_methodologies', '')
@@ -86,67 +80,26 @@ def generate_cv():
         applicant_knownlanguage = applicant.get('known_languages', '')
         applicant_nationality = applicant.get('applicant_nationality', '')
 
-        # Prepare languages with a default value
-        default_languages = ["English"]  # Default language list
-
-        # Simulated input for applicant_knownlanguage (this will be fetched from the database in practice)
-        # Example input (for testing purposes, replace this with the actual input)
-
-        # Add debug logging
-        print(f"Debug: applicant_knownlanguage raw value = {applicant_knownlanguage}")
-
-        # Initialize languages list with the default
+        default_languages = ["English"]
         languages = default_languages.copy()
 
-        # Check if applicant_knownlanguage is a valid string
         if isinstance(applicant_knownlanguage, str) and applicant_knownlanguage:
-            # Split the string by commas, strip whitespace, and filter out empty strings
-            split_languages = [
-                lang.strip() for lang in applicant_knownlanguage.split(',') if lang.strip()]
-
-            # Create a set to ensure uniqueness
+            split_languages = [lang.strip() for lang in applicant_knownlanguage.split(',') if lang.strip()]
             unique_languages = set(split_languages)
-
-            # Extend the languages list with unique languages
             languages.extend(unique_languages)
-
-            # Remove duplicates while preserving order
             languages = list(dict.fromkeys(languages))
 
-            print(f"Debug: Parsed languages = {languages}")
-        else:
-            print(
-                "Debug: applicant_knownlanguage is not a valid string or is None, defaulting to English.")
-
-        # Additional debug on list length
-        print(f"Debug: Length of languages list = {len(languages)}")
-
-        # Safely accessing the first and second languages, if available
         first_language = languages[0] if languages else 'English'
-        print(f"Debug: First language = {first_language}")
-
-        # Use a conditional assignment for the second language
         second_language = languages[1] if len(languages) > 1 else None
-        if second_language:
-            print(f"Debug: Second language = {second_language}")
-        else:
-            print("Debug: Second language not available.")
 
-            # Parse experiences
         job_experience_df = parse_job_experience(applicant_job_experience)
-        customer_experience_df = parse_customer_experience(
-            applicant_customer_experience)
+        customer_experience_df = parse_customer_experience(applicant_customer_experience)
         education_parsed = parse_education(applicant_education)
 
-        # Define the path to the template
-        static_folder = "static"
-        template_filename = "CV_template.docx"
-        template_path = os.path.join(static_folder, template_filename)
-
+        template_path = os.path.join("static", "CV_template.docx")
         if not os.path.exists(template_path):
             return jsonify({'error': 'Template file not found'}), 404
 
-        # Load the DOCX template and render
         doc = DocxTemplate(template_path)
         context = {
             'jobexperiences': job_experience_df.to_dict(orient='records'),
@@ -167,26 +120,20 @@ def generate_cv():
             'applicant_nationality': applicant_nationality,
         }
 
-        # Save the rendered document
-        output_path = os.path.join(
-            'static', 'word', f"{applicant_name}_CV.docx")
+        output_path = os.path.join('static', 'word', f"{applicant_name}_CV.docx")
         doc.render(context)
         doc.save(output_path)
 
-        # Convert DOCX to PDF using LibreOffice
         pdf_path = os.path.join('static', 'pdf', f"{applicant_name}_CV.pdf")
         os.makedirs(os.path.dirname(pdf_path), exist_ok=True)
 
-        try:
-            subprocess.run([
-                'soffice',
-                '--headless',
-                '--convert-to', 'pdf',
-                '--outdir', os.path.dirname(pdf_path),
-                os.path.abspath(output_path)
-            ], check=True)
-        except subprocess.CalledProcessError as e:
-            return jsonify({'error': 'Conversion to PDF failed', 'details': str(e)}), 500
+        subprocess.run([
+            'soffice',
+            '--headless',
+            '--convert-to', 'pdf',
+            '--outdir', os.path.dirname(pdf_path),
+            os.path.abspath(output_path)
+        ], check=True)
 
         if not os.path.exists(pdf_path):
             return jsonify({'error': 'PDF file not created'}), 500
@@ -197,10 +144,12 @@ def generate_cv():
         }), 200
 
     except Exception as e:
-        print(f"Error: {str(e)}")
         return jsonify({'error': str(e)}), 500
 
 
+# ============================
+# == [ROUTE] Embed / Download ==
+# ============================
 @cv_blueprint.route('/embed/pdf/<path:filename>', methods=['GET'])
 def embed_pdf(filename):
     pdf_folder = os.path.join(current_app.static_folder, 'pdf')
@@ -217,3 +166,40 @@ def download_pdf(filename):
 def download_docx(filename):
     word_folder = os.path.join(current_app.static_folder, 'word')
     return send_from_directory(word_folder, filename, as_attachment=True)
+
+
+# ============================
+# == [ROUTE] Upload Manual ==
+# ============================
+ALLOWED_EXTENSIONS = {'pdf', 'doc', 'docx'}
+UPLOAD_FOLDER = os.path.join('static', 'manual_uploads')
+
+def allowed_file(filename):
+    return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
+
+@cv_blueprint.route('/upload/manual', methods=['POST'])
+def upload_manual_cv():
+    if 'file' not in request.files:
+        return jsonify({'error': 'No file part'}), 400
+
+    file = request.files['file']
+    if file.filename == '':
+        return jsonify({'error': 'No selected file'}), 400
+
+    if file and allowed_file(file.filename):
+        filename = secure_filename(file.filename)
+        timestamp = datetime.now().strftime('%Y%m%d%H%M%S')
+        filename_with_time = f"{timestamp}_{filename}"
+
+        save_path = os.path.join(UPLOAD_FOLDER, filename_with_time)
+        os.makedirs(os.path.dirname(save_path), exist_ok=True)
+        file.save(save_path)
+
+        file_url = f'/static/manual_uploads/{filename_with_time}'
+        return jsonify({
+            'message': 'File uploaded successfully',
+            'filename': filename_with_time,
+            'url': file_url
+        }), 200
+
+    return jsonify({'error': 'Invalid file type'}), 400

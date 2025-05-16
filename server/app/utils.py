@@ -10,7 +10,14 @@ db_session = scoped_session(sessionmaker(autocommit=False, autoflush=False, bind
 
 
 def get_db_connection():
-    return db_session()
+    return mysql.connector.connect(
+        host=os.getenv("HR_DB_HOST"),
+        user=os.getenv("HR_DB_USER"),
+        password=os.getenv("HR_DB_PASSWORD"),
+        database=os.getenv("HR_DB_NAME"),
+
+        port=int(os.getenv("HR_DB_PORT"))
+    )
 
 def parse_customer_experience(customer_experience_str):
     positions = []
