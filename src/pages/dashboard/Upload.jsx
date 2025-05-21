@@ -1,8 +1,9 @@
 import React, { useState } from 'react';
 import { Button, Upload, Typography, Space, message, Card, Row, Col } from 'antd';
-import { UploadOutlined, DeleteOutlined } from '@ant-design/icons';
+import { InboxOutlined, DeleteOutlined } from '@ant-design/icons';
 
 const { Title } = Typography;
+const { Dragger } = Upload;
 
 const UploadComponent = () => {
   const [fileList, setFileList] = useState([]);
@@ -19,7 +20,7 @@ const UploadComponent = () => {
     }
 
     const formData = new FormData();
-    formData.append('file', fileList[0].originFileObj); // Ambil file asli dari antd Upload
+    formData.append('file', fileList[0].originFileObj);
 
     setUploading(true);
     try {
@@ -51,26 +52,24 @@ const UploadComponent = () => {
   };
 
   return (
-    <Row
-      justify="center"
-      align="middle"
-      style={{ height: '100vh', backgroundColor: '#f5f5f5' }}
-    >
+    <Row justify="center" align="middle" style={{ height: '100vh', backgroundColor: '#f5f5f5' }}>
       <Col xs={22} sm={18} md={14} lg={10} xl={8}>
-        <Card
-          style={{ textAlign: 'center', padding: 32, borderRadius: 12 }}
-          bodyStyle={{ padding: 0 }}
-        >
+        <Card style={{ textAlign: 'center', padding: 32, borderRadius: 12 }} bodyStyle={{ padding: 0 }}>
           <Title level={2} style={{ marginBottom: 30 }}>Upload Manual CV</Title>
 
-          <Upload
-            beforeUpload={() => false} // Supaya antd tidak langsung upload otomatis
+          <Dragger
+            beforeUpload={() => false}
             onChange={handleChange}
             fileList={fileList}
             maxCount={1}
+            style={{ padding: 20 }}
           >
-            <Button icon={<UploadOutlined />} size="large">Choose File</Button>
-          </Upload>
+            <p className="ant-upload-drag-icon">
+              <InboxOutlined />
+            </p>
+            <p className="ant-upload-text">Click or drag file to this area to upload</p>
+            <p className="ant-upload-hint">Only one file is allowed</p>
+          </Dragger>
 
           <Space size="large" style={{ marginTop: 30 }}>
             <Button
