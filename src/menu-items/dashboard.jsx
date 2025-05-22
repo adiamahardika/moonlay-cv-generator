@@ -1,9 +1,11 @@
 // assets
-import { DashboardOutlined } from '@ant-design/icons';
+import { DashboardOutlined, UploadOutlined, BarChartOutlined } from '@ant-design/icons'; // ✅ Tambahkan icon yang relevan
 
 // icons
 const icons = {
-  DashboardOutlined
+  DashboardOutlined,
+  UploadOutlined,
+  BarChartOutlined // ✅ Tambahkan ke daftar icon
 };
 
 // ==============================|| MENU ITEMS - DASHBOARD ||============================== //
@@ -27,6 +29,22 @@ const dashboard = {
       type: 'item',
       url: '/dashboard/applicantdata',
       icon: icons.DashboardOutlined,
+      breadcrumbs: false
+    },
+    {
+      id: 'uploadcv',
+      title: 'Upload',
+      type: 'item',
+      url: '/dashboard/upload-cv-manual', 
+      icon: icons.UploadOutlined,
+      breadcrumbs: false
+    },
+    {
+      id: 'statistics',
+      title: 'Statistics',
+      type: 'item',
+      url: '/dashboard/statistics', // ✅ URL sesuai route
+      icon: icons.BarChartOutlined, // ✅ Gunakan icon statistik
       breadcrumbs: false
     }
   ]

@@ -66,7 +66,7 @@ export default function MoonlayHR() {
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const response = await axios.get('http://localhost:5000/records.json');
+        const response = await axios.get(`${import.meta.env.VITE_BACKEND_URL}/records.json`);
         setData(response.data);
       } catch (error) {
         console.error('Error fetching data:', error);
@@ -91,7 +91,7 @@ export default function MoonlayHR() {
     setLoading(true); // Start loading
 
     axios
-      .post('http://localhost:5000/delete-record', {
+      .post(`${import.meta.env.VITE_BACKEND_URL}/delete-record`, {
         applicantid: idToDelete,
         visibility: false,
       })
@@ -353,16 +353,16 @@ const exportPdf = () => {
     setLoading(true); // Show loading spinner
 
     axios
-      .post('http://localhost:5000/generate-cv', {
+      .post(`${import.meta.env.VITE_BACKEND_URL}/generate-cv`, {
         applicantid: applicantid,
         applicantname: applicantname,
       })
       .then((response) => {
         console.log('Response:', response); // Debugging line
         if (response.data.pdfUrl) {
-          const pdfPath = `http://localhost:5000/download/pdf/${response.data.pdfUrl}`;
-          const docxPath = `http://localhost:5000/download/word/${response.data.docxUrl}`;
-          const embedPdfPath = `http://localhost:5000/embed/pdf/${response.data.pdfUrl}`;
+          const pdfPath = `${import.meta.env.VITE_BACKEND_URL}/download/pdf/${response.data.pdfUrl}`;
+          const docxPath = `${import.meta.env.VITE_BACKEND_URL}/download/word/${response.data.docxUrl}`;
+          const embedPdfPath = `${import.meta.env.VITE_BACKEND_URL}/embed/pdf/${response.data.pdfUrl}`;
           setPdfUrl(pdfPath);
           setDocxUrl(docxPath);
           setembedPdfUrl(embedPdfPath);

@@ -9,6 +9,8 @@ const Typography = Loadable(lazy(() => import('pages/component-overview/typograp
 const Shadow = Loadable(lazy(() => import('pages/component-overview/shadows')));
 const DashboardDefault = Loadable(lazy(() => import('pages/dashboard/index')));
 const ChatBot = Loadable(lazy(() => import('pages/dashboard/chatbot')));
+const UploadCVManual = Loadable(lazy(() => import('pages/dashboard/Upload'))); // ✅ tambahan baru
+const StatisticsPage = Loadable(lazy(() => import('pages/dashboard/StatisticsPage'))); // ✅ import baru
 
 // render - sample page
 const SamplePage = Loadable(lazy(() => import('pages/extra-pages/sample-page')));
@@ -37,6 +39,14 @@ const MainRoutes = {
         {
           path: 'applicantdata',
           element: <ChatBot />
+        },
+        {
+          path: 'upload-cv-manual',
+          element: <UploadCVManual /> // ✅ route baru
+        },
+        {
+          path: 'statistics', // Menambahkan route untuk statistik
+          element: <StatisticsPage /> // Menghubungkan ke StatisticsPage
         }
       ]
     },
