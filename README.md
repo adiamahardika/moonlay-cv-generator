@@ -1,122 +1,79 @@
-Important!
+# MoonlayHR
 
-# Setup For MoonlayHR
----------------------
+## Important!
 
-# Table of Contents
+### Table of Contents
+1. Overview  
+2. Requirements  
+3. Installation  
+4. Setup  
+5. Usage  
 
-1. Overview
-2. Requirements
-3. Installation
-4. Setup
-5. Usage
+---
 
----------------------
+## Overview
 
-# Overview
+This is MoonlayHR web application. Its main functionality includes the creation and processing of CV and chatbot.
 
-This is MoonlayHR web application, its main functionality include the creation and processing of cv and chatbot.
+---
 
----------------------
+## Requirements
 
-# Requirements
+- **Python Version**: 3.12.5  
+- **Environment Variables**:
+  - `OPEN_AI_KEY`, `DB_URI`, `DB_HOST`, `DB_USER`, `DB_PASSWORD`, `DB_NAME`, `DB_PORT`
+  - `FLASK_HOST`, `FLASK_PORT`, `FLASK_DEBUG`
+  - `VITE_KEYCLOAK_URL`, `VITE_KEYCLOAK_CLIENT_ID`, `VITE_KEYCLOAK_REDIRECT_URI`, `VITE_API_BASE`
+- **Libraries**: Refer to `requirements.txt` (backend) and `yarn.lock` (frontend)
 
-- Python Version: 3.12.5
-- Environment Variable: OPEN_AI_KEY, DB_URI, DB_HOST, DB_USER, DB_PASSWORD, DB_NAME, DB_PORT, FLASK_HOST, FLASK_PORT, FLASK_DEBUG, VITE_KEYCLOAK_URL, VITE_KEYCLOAK_CLIENT_ID, VITE_KEYCLOAK_REDIRECT_URI, VITE_API_BASE
-- Required Libraries: Refer to requirements.txt and yarn.lock
+---
 
----------------------
+## Installation
 
-# Installation
+### Frontend
 
-1. Clone the Repository using git clone command.
+1. Navigate into the `frontend` folder  
+2. Run: `yarn install`
 
-## Frontend
+### Backend
 
-1. Navigate into the frontend folder
+1. Navigate into the `server` folder  
+2. (Optional) Create and activate virtual environment:
+   - Windows: `python -m venv venv && .\venv\Scripts\activate`
+   - Mac/Linux: `python3 -m venv venv && source venv/bin/activate`
+3. Run: `pip install -r requirements.txt`
 
-2. run command yarn install or yarn i
+### Docker (Optional)
 
-## Backend
+1. Navigate to `moonlay-quotation` (contains `docker-compose.yml`)  
+2. Run:  
+   - `docker compose build`  
+   - `docker compose up`
 
-1. Navigate into the server folder.
+---
 
-2. (Optional) Create a virtual environment in the project folder using python -m venv venv, activate virtual environment using ".\venv\Scripts\activate" for windows and "source venv/bin/activate" for mac.
+## Setup
 
-3. Download all required libraries and modules through the requirements.txt file. 
-   - Run the command "pip install -r requirements.txt".
+1. Create a `.env` file in the root of the project (same level as `.gitignore`)  
+2. Fill it with the following keys:
 
-## Docker
+### Backend
 
-1. Navigate into the moonlay-quotation folder in docker using the docker CLI, there should be a docker-compose.yml file.
+```env
+OPENAI_API_KEY=...
+DB_URI=...
+DB_HOST=...
+DB_USER=...
+DB_PASSWORD=...
+DB_NAME=...
+DB_PORT=3306
+FLASK_HOST=0.0.0.0
+FLASK_PORT=5000
+FLASK_DEBUG=True
 
-2. run the command docker compose build to build the containers.
 
-3. run the command docker compose up to run the containers.
-
----------------------
-
-# Setup
-
-1. Configure the .env file
-   - The env file should be named .env and be placed in original moonlay-hr folder alongside the gitignore and docker-compose.yml.
-   - the env file should contain the environment value for:
-
-    ## Backend Environment Variables
-
-        OPENAI_API_KEY
-        Chatbot Api Key
-
-        DB_URI
-        Full database connection string for connecting to a MySQL database using mysql+mysqlconnector.
-
-        DB_HOST
-        Hostname or IP address of the database server.
-
-        DB_USER
-        Username for database authentication.
-
-        DB_PASSWORD
-        Password for database authentication.
-
-        DB_NAME
-        Name of the specific database to connect to.
-
-        DB_PORT
-        Port number on which the database server is running (default for MySQL: 3306).
-
-        FLASK_HOST
-        Host address for running the Flask backend (e.g., 0.0.0.0 to allow access from any IP).
-
-        FLASK_PORT
-        Port number on which the Flask server will listen (default: 5000).
-
-        FLASK_DEBUG
-        Debug mode toggle (True for enabling debug mode, useful during development).
-
-    ## Frontend Environment Variables
-
-        VITE_KEYCLOAK_URL
-        Base URL of the Keycloak authentication server.
-
-        VITE_KEYCLOAK_REALM
-        The Keycloak realm to authenticate users against.
-
-        VITE_KEYCLOAK_CLIENT_ID
-        Client ID used for identifying the frontend application in Keycloak.
-
-        VITE_KEYCLOAK_REDIRECT_URI
-        URL where Keycloak redirects users after successful login.
-
-        VITE_API_BASE
-        localhost url for backend.
-
----------------------
-
-# Usage
-
-1. Run the Program
-   - navigate to the server folder, Run the command "flask run" to run the flask backend of the application.
-   - navigate to the mantine-template-main folder and run the command "yarn start dev" to run the moonlayHR frontend.
-
----------------------
+VITE_KEYCLOAK_URL=...
+VITE_KEYCLOAK_REALM=...
+VITE_KEYCLOAK_CLIENT_ID=...
+VITE_KEYCLOAK_REDIRECT_URI=...
+VITE_API_BASE=...

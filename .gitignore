@@ -1,5 +1,89 @@
+# Bagian khusus untuk struktur project lokal
 server/venv/
 server/node_modules
 moonlay-quotation/node_modules
 server/.env
 .env
+
+# Logs
+logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+lerna-debug.log*
+
+# Diagnostic reports
+report.[0-9]*.[0-9]*.[0-9]*.[0-9]*.json
+
+# Runtime data
+pids
+*.pid
+*.seed
+*.pid.lock
+
+# Instrumented libs
+lib-cov
+
+# Coverage
+coverage
+*.lcov
+.nyc_output
+
+# Grunt intermediate storage
+.grunt
+
+# Bower
+bower_components
+
+# node-waf
+.lock-wscript
+
+# Compiled binary addons
+build/Release
+build
+
+# Dependency directories
+node_modules/
+jspm_packages/
+
+# TypeScript
+typings/
+*.tsbuildinfo
+
+# Caches
+.npm
+.eslintcache
+.rpt2_cache/
+.rts2_cache_cjs/
+.rts2_cache_es/
+.rts2_cache_umd/
+.cache
+
+# REPL
+.node_repl_history
+
+# npm pack output
+*.tgz
+
+# Yarn Integrity
+.yarn-integrity
+
+# dotenv
+.env.test
+
+# Frameworks & tools
+.next
+.nuxt
+dist
+.vuepress/dist
+.serverless/
+.fusebox/
+.dynamodb/
+
+# Misc
+.tern-port
+.bak
+
+# Lock files
+package-lock.json
