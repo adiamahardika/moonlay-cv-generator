@@ -24,7 +24,8 @@ const UploadComponent = () => {
 
     setUploading(true);
     try {
-      const response = await fetch('http://localhost:5000/api/upload/manual', {
+      console.log('Uploading file:', import.meta.env.VITE_BACKEND_URL);
+      const response = await fetch(`${import.meta.env.VITE_BACKEND_URL}/upload-manual`, {
         method: 'POST',
         body: formData,
       });
