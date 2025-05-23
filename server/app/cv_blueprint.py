@@ -4,10 +4,63 @@ import re
 from docxtpl import DocxTemplate
 import mysql.connector
 import subprocess
+from werkzeug.utils import secure_filename
 from .utils import get_db_connection, parse_job_experience, parse_customer_experience, parse_education
+
+# Konfigurasi upload
+ALLOWED_EXTENSIONS = {'pdf', 'doc', 'docx', 'png', 'jpg', 'jpeg'}
+MAX_FILE_SIZE = 5 * 1024 * 1024  # 5MB
 
 cv_blueprint = Blueprint('cv', __name__, static_folder='../static')
 
+def allowed_file(filename):
+    return '.' in filename and \
+           filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
+
+@cv_blueprint.route('/upload-manual', methods=['POST'])
+def upload_manual():
+    try:
+        # Cek jika request tidak mengandung file
+        if 'file' not in request.files:
+            return jsonify({'error': 'Tidak ada file yang diunggah'}), 400
+        
+        file = request.files['file']
+        
+        # Jika user tidak memilih file
+        if file.filename == '':
+            return jsonify({'error': 'Tidak ada file yang dipilih'}), 400
+        
+        # Cek ekstensi file
+        if not allowed_file(file.filename):
+            return jsonify({'error': 'Tipe file tidak diizinkan'}), 400
+        
+        # Cek ukuran file
+        if request.content_length > MAX_FILE_SIZE:
+            return jsonify({'error': 'Ukuran file terlalu besar (maksimal 5MB)'}), 400
+        
+        if file and allowed_file(file.filename):
+            # Buat folder upload_manuals jika belum ada
+            upload_folder = os.path.join(current_app.static_folder, 'upload_manuals')
+            os.makedirs(upload_folder, exist_ok=True)
+            
+            # Secure filename dan buat nama unik
+            filename = secure_filename(file.filename)
+            base, ext = os.path.splitext(filename)
+            unique_filename = f"{base}_{os.urandom(4).hex()}{ext}"
+            
+            # Simpan file
+            file_path = os.path.join(upload_folder, unique_filename)
+            file.save(file_path)
+            
+            return jsonify({
+                'message': 'File berhasil diunggah',
+                'filename': unique_filename,
+                'path': f'/static/upload_manuals/{unique_filename}'
+            }), 200
+    
+    except Exception as e:
+        current_app.logger.error(f'Error saat upload: {str(e)}')
+        return jsonify({'error': 'Terjadi kesalahan saat mengunggah file'}), 500
 
 @cv_blueprint.route('/generate-cv', methods=['POST'])
 def generate_cv():
@@ -49,7 +102,7 @@ def generate_cv():
         LEFT JOIN education e ON a.applicant_id = e.applicant_id
         LEFT JOIN certification cert ON a.applicant_id = cert.applicant_id
         LEFT JOIN skills s ON a.applicant_id = s.applicant_id
-        WHERE a.applicant_id = %s  -- Use applicant_id for filtering
+        WHERE a.applicant_id = %s
         """
 
         # Connect to the database
@@ -69,16 +122,14 @@ def generate_cv():
 
         # Extracting applicant data with None checks
         applicant_job_experience = applicant.get('job_experiences', '')
-        applicant_customer_experience = applicant.get(
-            'customer_experiences', '')
+        applicant_customer_experience = applicant.get('customer_experiences', '')
         applicant_city = applicant.get('applicant_city', '')
         applicant_dob = applicant.get('applicant_dateofbirth', '')
         applicant_gender = applicant.get('applicant_gender', '')
         applicant_certification = applicant.get('certifications', '')
         applicant_education = applicant.get('education', '')
         programming_skills = applicant.get('programming_skills', '')
-        product_knowledge_skills = applicant.get(
-            'product_knowledge_skills', '')
+        product_knowledge_skills = applicant.get('product_knowledge_skills', '')
         technology_knowledge_skills = applicant.get('technology_skills', '')
         operating_systems = applicant.get('operating_systems', '')
         project_methodologies = applicant.get('project_methodologies', '')
@@ -87,55 +138,38 @@ def generate_cv():
         applicant_nationality = applicant.get('applicant_nationality', '')
 
         # Prepare languages with a default value
-        default_languages = ["English"]  # Default language list
+        default_languages = ["English"]
 
-        # Simulated input for applicant_knownlanguage (this will be fetched from the database in practice)
-        # Example input (for testing purposes, replace this with the actual input)
-
-        # Add debug logging
         print(f"Debug: applicant_knownlanguage raw value = {applicant_knownlanguage}")
 
-        # Initialize languages list with the default
         languages = default_languages.copy()
 
-        # Check if applicant_knownlanguage is a valid string
         if isinstance(applicant_knownlanguage, str) and applicant_knownlanguage:
-            # Split the string by commas, strip whitespace, and filter out empty strings
             split_languages = [
                 lang.strip() for lang in applicant_knownlanguage.split(',') if lang.strip()]
 
-            # Create a set to ensure uniqueness
             unique_languages = set(split_languages)
-
-            # Extend the languages list with unique languages
             languages.extend(unique_languages)
-
-            # Remove duplicates while preserving order
             languages = list(dict.fromkeys(languages))
 
             print(f"Debug: Parsed languages = {languages}")
         else:
-            print(
-                "Debug: applicant_knownlanguage is not a valid string or is None, defaulting to English.")
+            print("Debug: applicant_knownlanguage is not a valid string or is None, defaulting to English.")
 
-        # Additional debug on list length
         print(f"Debug: Length of languages list = {len(languages)}")
 
-        # Safely accessing the first and second languages, if available
         first_language = languages[0] if languages else 'English'
         print(f"Debug: First language = {first_language}")
 
-        # Use a conditional assignment for the second language
         second_language = languages[1] if len(languages) > 1 else None
         if second_language:
             print(f"Debug: Second language = {second_language}")
         else:
             print("Debug: Second language not available.")
 
-            # Parse experiences
+        # Parse experiences
         job_experience_df = parse_job_experience(applicant_job_experience)
-        customer_experience_df = parse_customer_experience(
-            applicant_customer_experience)
+        customer_experience_df = parse_customer_experience(applicant_customer_experience)
         education_parsed = parse_education(applicant_education)
 
         # Define the path to the template
@@ -168,8 +202,7 @@ def generate_cv():
         }
 
         # Save the rendered document
-        output_path = os.path.join(
-            'static', 'word', f"{applicant_name}_CV.docx")
+        output_path = os.path.join('static', 'word', f"{applicant_name}_CV.docx")
         doc.render(context)
         doc.save(output_path)
 
@@ -192,26 +225,31 @@ def generate_cv():
             return jsonify({'error': 'PDF file not created'}), 500
 
         return jsonify({
-            'docxUrl': f'{applicant_name}_CV.docx',
-            'pdfUrl': f'{applicant_name}_CV.pdf'
+            'docxUrl': f'/download/word/{applicant_name}_CV.docx',
+            'pdfUrl': f'/download/pdf/{applicant_name}_CV.pdf'
         }), 200
 
     except Exception as e:
-        print(f"Error: {str(e)}")
+        current_app.logger.error(f'Error generating CV: {str(e)}')
         return jsonify({'error': str(e)}), 500
 
+@cv_blueprint.route('/download/upload_manuals/<path:filename>', methods=['GET'])
+def download_uploaded_file(filename):
+    try:
+        upload_folder = os.path.join(current_app.static_folder, 'upload_manuals')
+        return send_from_directory(upload_folder, filename, as_attachment=True)
+    except FileNotFoundError:
+        abort(404)
 
 @cv_blueprint.route('/embed/pdf/<path:filename>', methods=['GET'])
 def embed_pdf(filename):
     pdf_folder = os.path.join(current_app.static_folder, 'pdf')
     return send_from_directory(pdf_folder, filename)
 
-
 @cv_blueprint.route('/download/pdf/<path:filename>', methods=['GET'])
 def download_pdf(filename):
     pdf_folder = os.path.join(current_app.static_folder, 'pdf')
     return send_from_directory(pdf_folder, filename, as_attachment=True)
-
 
 @cv_blueprint.route('/download/word/<path:filename>', methods=['GET'])
 def download_docx(filename):

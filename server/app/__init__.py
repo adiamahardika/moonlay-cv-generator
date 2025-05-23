@@ -1,5 +1,3 @@
-# app/__init__.py
-
 from flask import Flask
 from .record_blueprint import record_blueprint
 from .bot_blueprint import bot_blueprint
@@ -12,10 +10,20 @@ import os
 def create_app():
     static_folder_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), '../static')
 
-  # Set the static folder path
+    # Set the static folder path
     app = Flask(__name__, static_folder=static_folder_path)
 
+    # Configuration settings
+    app.config.update(
+        MAX_CONTENT_LENGTH=5 * 1024 * 1024,  # 5MB upload limit
+        UPLOAD_FOLDER=os.path.join(static_folder_path, 'upload_manuals'),
+        ALLOWED_EXTENSIONS={'pdf', 'doc', 'docx', 'png', 'jpg', 'jpeg'}
+    )
+
     CORS(app)  # Enable CORS for all routes
+
+    # Create upload folder if it doesn't exist
+    os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
 
     # Register blueprints
     app.register_blueprint(record_blueprint)
