@@ -8,8 +8,61 @@ from werkzeug.utils import secure_filename
 from datetime import datetime
 from .utils import parse_job_experience, parse_customer_experience, parse_education
 
+# Konfigurasi upload
+ALLOWED_EXTENSIONS = {'pdf', 'doc', 'docx', 'png', 'jpg', 'jpeg'}
+MAX_FILE_SIZE = 5 * 1024 * 1024  # 5MB
+
 cv_blueprint = Blueprint('cv', __name__, static_folder='../static')
 
+def allowed_file(filename):
+    return '.' in filename and \
+           filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
+
+@cv_blueprint.route('/upload-manual', methods=['POST'])
+def upload_manual():
+    try:
+        # Cek jika request tidak mengandung file
+        if 'file' not in request.files:
+            return jsonify({'error': 'Tidak ada file yang diunggah'}), 400
+        
+        file = request.files['file']
+        
+        # Jika user tidak memilih file
+        if file.filename == '':
+            return jsonify({'error': 'Tidak ada file yang dipilih'}), 400
+        
+        # Cek ekstensi file
+        if not allowed_file(file.filename):
+            return jsonify({'error': 'Tipe file tidak diizinkan'}), 400
+        
+        # Cek ukuran file
+        if request.content_length > MAX_FILE_SIZE:
+            return jsonify({'error': 'Ukuran file terlalu besar (maksimal 5MB)'}), 400
+        
+        if file and allowed_file(file.filename):
+            # Buat folder upload_manuals jika belum ada
+            upload_folder = os.path.join(current_app.static_folder, 'upload_manuals')
+            os.makedirs(upload_folder, exist_ok=True)
+            
+            # Secure filename dan buat nama unik
+            filename = secure_filename(file.filename)
+            base, ext = os.path.splitext(filename)
+            unique_filename = f"{base}_{os.urandom(4).hex()}{ext}"
+            
+            # Simpan file
+            file_path = os.path.join(upload_folder, unique_filename)
+            file.save(file_path)
+            
+            return jsonify({
+                'message': 'File berhasil diunggah',
+                'filename': unique_filename,
+                'path': f'/static/upload_manuals/{unique_filename}'
+            }), 200
+    
+    except Exception as e:
+        current_app.logger.error(f'Error saat upload: {str(e)}')
+        return jsonify({'error': 'Terjadi kesalahan saat mengunggah file'}), 500
+    
 # ============================
 # == [ROUTE] Generate CV ==
 # ============================
@@ -139,14 +192,22 @@ def generate_cv():
             return jsonify({'error': 'PDF file not created'}), 500
 
         return jsonify({
-            'docxUrl': f'{applicant_name}_CV.docx',
-            'pdfUrl': f'{applicant_name}_CV.pdf'
+            'docxUrl': f'/download/word/{applicant_name}_CV.docx',
+            'pdfUrl': f'/download/pdf/{applicant_name}_CV.pdf'
         }), 200
 
     except Exception as e:
+        current_app.logger.error(f'Error generating CV: {str(e)}')
         return jsonify({'error': str(e)}), 500
 
-
+@cv_blueprint.route('/download/upload_manuals/<path:filename>', methods=['GET'])
+def download_uploaded_file(filename):
+    try:
+        upload_folder = os.path.join(current_app.static_folder, 'upload_manuals')
+        return send_from_directory(upload_folder, filename, as_attachment=True)
+    except FileNotFoundError:
+        abort(404)
+        
 # ============================
 # == [ROUTE] Embed / Download ==
 # ============================
