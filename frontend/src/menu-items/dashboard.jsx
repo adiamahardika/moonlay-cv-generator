@@ -37,8 +37,16 @@ const dashboard = {
       url: '/dashboard/upload-cv-manual', 
       icon: icons.UploadOutlined,        
       breadcrumbs: false
-    }
+    },
+    {
+  id: 'skill-statistics',
+  title: 'Skill Statistics',
+  type: 'item',
+  url: '/dashboard/skill-statistics',
+  icon: icons.DashboardOutlined,
+  breadcrumbs: false
+}
   ]
 };
 
-export default dashboard;
+export default dashboard;
