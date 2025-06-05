@@ -5,14 +5,15 @@ import time
 import mysql.connector
 from .utils import get_db_connection
 import json
-from langchain_google_genai import ChatGoogleGenerativeAI as GoogleChat
+from langchain.chat_models import ChatOpenAI
+
 from langchain_community.agent_toolkits.sql.toolkit import SQLDatabaseToolkit
 from langchain_community.agent_toolkits.sql.base import create_sql_agent
 from langchain.memory import ConversationBufferWindowMemory
 from langchain_community.utilities import SQLDatabase
 from langchain.prompts import PromptTemplate
 
-llm = GoogleChat(model="gemini-pro", temperature=0.3)
+llm = ChatOpenAI(model="gpt-4o-mini", temperature=0.3)
 
 def poll_db_for_new_data():
     while True:
@@ -54,7 +55,7 @@ def poll_db_for_new_data():
             cursor.close()
             db_conn.close()
 
-        time.sleep(240)
+        time.sleep(30)
 
 def extract_applicant_data(rawdata):
     prompt_template = PromptTemplate(
