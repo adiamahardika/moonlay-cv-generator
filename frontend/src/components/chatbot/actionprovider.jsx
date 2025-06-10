@@ -9,7 +9,7 @@ const ActionProvider = ({ createChatBotMessage, setState, children }) => {
     try {
       // Convert the uppercase message to a JSON string
       const user_query = JSON.stringify(upperCaseMessage);
-      const data = { key: user_query };
+     const data = { query: message };
       console.log("Ini" + import.meta.env.VITE_BACKEND_URL)
       // Make the POST request to the Flask backend
       const response = await axios.post(`${import.meta.env.VITE_BACKEND_URL}/api`, data);
