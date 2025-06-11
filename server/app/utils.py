@@ -4,10 +4,17 @@ import os
 import pandas as pd
 from sqlalchemy import create_engine
 from sqlalchemy.orm import scoped_session, sessionmaker
+from docx2pdf import convert
 
 engine = create_engine(os.getenv("HR_DB_URI"))
 db_session = scoped_session(sessionmaker(autocommit=False, autoflush=False, bind=engine))
 
+def generate_cv_as_pdf(template_path, output_docx, output_pdf, data):
+    # Generate docx dulu
+    generate_cv_from_template(template_path, output_docx, data)
+    
+    # Konversi ke PDF
+    convert(output_docx, output_pdf)
 
 def get_db_connection():
     return mysql.connector.connect(
