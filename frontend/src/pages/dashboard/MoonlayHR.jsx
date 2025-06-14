@@ -19,7 +19,7 @@ import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import { saveAs } from 'file-saver';
 import { ProgressSpinner } from 'primereact/progressspinner';
-
+import { InputTextarea } from 'primereact/inputtextarea';
 
 export default function MoonlayHR() {
   const [data, setData] = useState([]); // Data for the table
@@ -41,6 +41,85 @@ export default function MoonlayHR() {
 
   const [first, setFirst] = useState(0); // For tracking the first record index
   const [rows, setRows] = useState(10); // Number of rows per page
+ const [showEditDialog, setShowEditDialog] = useState(false);
+const [originCVData, setOriginCVData] = useState({
+  applicant: {},
+  education: [],
+  certification: [],
+  customerexperience: [],
+  jobexperience: [],
+  skills: [],
+});
+const [originPdfUrl, setOriginPdfUrl] = useState(null);
+
+// ✅ FUNGSI: Fetch Origin CV (ambil dari backend dan isi form)
+const fetchOriginCV = async (applicant_id, rowData = {}) => {
+  try {
+    const response = await axios.post(`${import.meta.env.VITE_BACKEND_URL}/get-origin-cv`, {
+      applicant_id,
+    });
+
+    const originData = response.data?.data || {};
+
+    // Utility: hilangkan tag HTML dan aman dari non-string
+    const cleanHTML = (value) => {
+      if (typeof value !== 'string') return '';
+      return value.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim();
+    };
+
+    // Fallback jika data origin kosong, ambil dari row tabel
+    const fallbackApplicant = {
+      applicant_name: rowData?.applicant_name || '',
+      applicant_contact: rowData?.applicant_contact || '',
+      applicant_email: rowData?.applicant_email || '',
+    };
+
+    const fallbackEducation = [
+      { school_name: cleanHTML(rowData?.applicant_education), degree: '' },
+    ];
+
+    const fallbackSkills = [
+      { skill_content: cleanHTML(rowData?.applicant_skill) },
+    ];
+
+    const fallbackJobExp = [
+      { position: cleanHTML(rowData?.job_experiences), company: '' },
+    ];
+
+    const fallbackCustExp = [
+      { project_name: cleanHTML(rowData?.customer_experiences), client: '' },
+    ];
+
+    setOriginCVData({
+      applicant: originData.applicant || fallbackApplicant,
+      education: originData.education?.length ? originData.education : fallbackEducation,
+      skills: originData.skills?.length ? originData.skills : fallbackSkills,
+      jobexperience: originData.jobexperience?.length ? originData.jobexperience : fallbackJobExp,
+      customerexperience: originData.customerexperience?.length
+        ? originData.customerexperience
+        : fallbackCustExp,
+      certification: originData.certification || [],
+    });
+
+    setOriginPdfUrl(response.data.origin_pdf_url || null);
+  } catch (error) {
+    console.error('❌ Gagal fetch origin CV:', error);
+    alert('Gagal mengambil data origin CV.');
+  }
+};
+
+// ✅ FUNGSI: Simpan Origin CV ke backend
+const saveOriginCV = async () => {
+  try {
+    await axios.post(`${import.meta.env.VITE_BACKEND_URL}/update-origin-cv`, originCVData);
+    alert('Data berhasil disimpan!');
+    setShowEditDialog(false);
+  } catch (error) {
+    console.error('❌ Gagal menyimpan origin CV:', error);
+    alert('Gagal menyimpan data origin CV.');
+  }
+};
+
 
   // This will contain your data, replace with actual data source.
   const totalRecords = data.length; // Total number of records in the table
@@ -340,6 +419,15 @@ const exportPdf = () => {
             onClick={handleDownloadCvClick}
             style={{ marginBottom: '10px', width: '100%', textAlign: 'start' }}
           />
+         <Button
+  label="Edit"
+  className="p-button-text"
+  onClick={() => {
+    fetchOriginCV(rowData.applicant_id, rowData); // ✅ PASTIKAN rowData dikirim
+    setShowEditDialog(true);
+  }}
+/>
+
         </div>
       </div>
     );
@@ -895,6 +983,200 @@ const exportPdf = () => {
           </>
         )}
       </Dialog>
+
+<Dialog
+  visible={showEditDialog}
+  header="Edit Origin CV"
+  onHide={() => setShowEditDialog(false)}
+  style={{ width: '90vw', maxWidth: '1200px' }}
+  modal
+  footer={
+    <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '1rem' }}>
+      <Button label="Cancel" icon="pi pi-times" className="p-button-text" onClick={() => setShowEditDialog(false)} />
+      <Button label="Save" icon="pi pi-check" className="p-button-success" onClick={saveOriginCV} />
+    </div>
+  }
+>
+  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '2rem' }}>
+    {/* LEFT: FORM */}
+    <div style={{ overflowY: 'auto', maxHeight: '80vh' }}>
+      <h4>Form Origin CV</h4>
+
+      <div className="p-field">
+        <label>Applicant Name</label>
+        <InputText
+          value={originCVData.applicant?.applicant_name || ''}
+          onChange={(e) =>
+            setOriginCVData((prev) => ({
+              ...prev,
+              applicant: { ...prev.applicant, applicant_name: e.target.value },
+            }))
+          }
+        />
+      </div>
+
+      <div className="p-field">
+        <label>Contact</label>
+        <InputText
+          value={originCVData.applicant?.applicant_contact || ''}
+          onChange={(e) =>
+            setOriginCVData((prev) => ({
+              ...prev,
+              applicant: { ...prev.applicant, applicant_contact: e.target.value },
+            }))
+          }
+        />
+      </div>
+
+      <div className="p-field">
+        <label>Email</label>
+        <InputText
+          value={originCVData.applicant?.applicant_email || ''}
+          onChange={(e) =>
+            setOriginCVData((prev) => ({
+              ...prev,
+              applicant: { ...prev.applicant, applicant_email: e.target.value },
+            }))
+          }
+        />
+      </div>
+
+      <h5>Education</h5>
+      {originCVData.education?.map((edu, index) => (
+        <div key={index} className="p-field">
+          <InputText
+            placeholder="School"
+            value={edu.school_name}
+            onChange={(e) => {
+              const updated = [...originCVData.education];
+              updated[index].school_name = e.target.value;
+              setOriginCVData((prev) => ({ ...prev, education: updated }));
+            }}
+          />
+          <InputText
+            placeholder="Degree"
+            value={edu.degree}
+            onChange={(e) => {
+              const updated = [...originCVData.education];
+              updated[index].degree = e.target.value;
+              setOriginCVData((prev) => ({ ...prev, education: updated }));
+            }}
+          />
+        </div>
+      ))}
+      <Button
+        label="Add Education"
+        icon="pi pi-plus"
+        className="p-button-sm p-button-text"
+        onClick={() =>
+          setOriginCVData((prev) => ({
+            ...prev,
+            education: [...(prev.education || []), { school_name: '', degree: '' }],
+          }))
+        }
+      />
+
+      <h5>Skills</h5>
+      <InputTextarea
+        rows={3}
+        placeholder="Skill content"
+        value={originCVData.skills?.[0]?.skill_content || ''}
+        onChange={(e) =>
+          setOriginCVData((prev) => ({
+            ...prev,
+            skills: [{ skill_content: e.target.value }],
+          }))
+        }
+      />
+
+      <h5>Job Experience</h5>
+      {originCVData.jobexperience?.map((job, index) => (
+        <div key={index} className="p-field">
+          <InputText
+            placeholder="Position"
+            value={job.position}
+            onChange={(e) => {
+              const updated = [...originCVData.jobexperience];
+              updated[index].position = e.target.value;
+              setOriginCVData((prev) => ({ ...prev, jobexperience: updated }));
+            }}
+          />
+          <InputText
+            placeholder="Company"
+            value={job.company}
+            onChange={(e) => {
+              const updated = [...originCVData.jobexperience];
+              updated[index].company = e.target.value;
+              setOriginCVData((prev) => ({ ...prev, jobexperience: updated }));
+            }}
+          />
+        </div>
+      ))}
+      <Button
+        label="Add Job Experience"
+        icon="pi pi-plus"
+        className="p-button-sm p-button-text"
+        onClick={() =>
+          setOriginCVData((prev) => ({
+            ...prev,
+            jobexperience: [...(prev.jobexperience || []), { position: '', company: '' }],
+          }))
+        }
+      />
+
+      <h5>Customer Experience</h5>
+      {originCVData.customerexperience?.map((cust, index) => (
+        <div key={index} className="p-field">
+          <InputText
+            placeholder="Project Name"
+            value={cust.project_name}
+            onChange={(e) => {
+              const updated = [...originCVData.customerexperience];
+              updated[index].project_name = e.target.value;
+              setOriginCVData((prev) => ({ ...prev, customerexperience: updated }));
+            }}
+          />
+          <InputText
+            placeholder="Client"
+            value={cust.client}
+            onChange={(e) => {
+              const updated = [...originCVData.customerexperience];
+              updated[index].client = e.target.value;
+              setOriginCVData((prev) => ({ ...prev, customerexperience: updated }));
+            }}
+          />
+        </div>
+      ))}
+      <Button
+        label="Add Customer Experience"
+        icon="pi pi-plus"
+        className="p-button-sm p-button-text"
+        onClick={() =>
+          setOriginCVData((prev) => ({
+            ...prev,
+            customerexperience: [...(prev.customerexperience || []), { project_name: '', client: '' }],
+          }))
+        }
+      />
+    </div>
+
+    {/* RIGHT: ORIGIN CV PREVIEW */}
+    <div>
+      <h4>Origin CV Preview</h4>
+      {originPdfUrl ? (
+        <iframe
+          src={`${originPdfUrl}#toolbar=0`}
+          title="CV Preview"
+          width="100%"
+          height="700px"
+          style={{ border: '1px solid #ccc', borderRadius: '8px' }}
+        />
+      ) : (
+        <p>No Origin CV file found.</p>
+      )}
+    </div>
+  </div>
+</Dialog>
     </div>
   );
 }

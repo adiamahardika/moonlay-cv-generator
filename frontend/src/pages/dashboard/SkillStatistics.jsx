@@ -8,7 +8,7 @@ export default function SkillsStatisticsPage() {
   const [error, setError] = useState(null);
 
   useEffect(() => {
-   fetch('http://localhost:5000/api/statistics')
+   fetch('http://192.168.110.132:5000/api/statistics')
       .then((res) => {
         if (!res.ok) throw new Error('Failed to fetch statistics data');
         return res.json();
