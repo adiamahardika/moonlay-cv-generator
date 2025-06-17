@@ -50,7 +50,7 @@ const UploadComponent = () => {
 
     setUploading(true);
     try {
-      const response = await fetch(`${import.meta.env.VITE_BACKEND_URL}/upload/manual`, {
+      const response = await fetch(`${import.meta.env.VITE_BACKEND_URL}/upload`, {
         method: 'POST',
         body: formData,
       });
