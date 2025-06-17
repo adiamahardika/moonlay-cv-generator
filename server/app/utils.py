@@ -5,27 +5,15 @@ import pandas as pd
 from sqlalchemy import create_engine
 from sqlalchemy.orm import scoped_session, sessionmaker
 from docx2pdf import convert
-from docx import Document
+from docxtpl import DocxTemplate
 
 engine = create_engine(os.getenv("HR_DB_URI"))
 db_session = scoped_session(sessionmaker(autocommit=False, autoflush=False, bind=engine))
 
-def generate_cv_from_template(template_path, output_docx, data):
-    doc = Document(template_path)
-
-    for p in doc.paragraphs:
-        if '{{name}}' in p.text:
-            p.text = p.text.replace('{{name}}', data['name'])
-        if '{{email}}' in p.text:
-            p.text = p.text.replace('{{email}}', data['email'])
-        if '{{address}}' in p.text:
-            p.text = p.text.replace('{{address}}', data['address'])
-
-    doc.save(output_docx)
-
 def generate_cv_as_pdf(template_path, output_docx, output_pdf, data):
-    # Generate docx dulu
-    generate_cv_from_template(template_path, output_docx, data)
+    doc = DocxTemplate(template_path)
+    doc.render(data)
+    doc.save(output_docx)
     
     # Konversi ke PDF
     convert(output_docx, output_pdf)
@@ -39,6 +27,48 @@ def get_db_connection():
 
         port=int(os.getenv("HR_DB_PORT"))
     )
+
+def get_applicant_data(applicant_id):
+    conn = get_db_connection()
+    cursor = conn.cursor(dictionary=True)
+
+    cursor.execute("SELECT * FROM applicant WHERE applicant_id = %s", (applicant_id,))
+    applicant = cursor.fetchone()
+
+    if not applicant:
+        return {}
+
+    cursor.execute("SELECT * FROM education WHERE applicant_id = %s", (applicant_id,))
+    education_rows = cursor.fetchall()
+
+    cursor.execute("SELECT * FROM jobexperience WHERE applicant_id = %s", (applicant_id,))
+    job_rows = cursor.fetchall()
+
+    cursor.execute("SELECT * FROM customerexperience WHERE applicant_id = %s", (applicant_id,))
+    customer_rows = cursor.fetchall()
+
+    cursor.execute("SELECT * FROM skills WHERE applicant_id = %s", (applicant_id,))
+    skills = cursor.fetchone() or {}
+
+    return {
+        "applicant_name": applicant.get("applicant_name", "-"),
+        "applicant_email": applicant.get("applicant_email", "-"),
+        "applicant_dob": applicant.get("applicant_dateofbirth", "-"),
+        "applicant_city": applicant.get("applicant_city", "-"),
+        "applicant_gender": applicant.get("applicant_gender", "-"),
+        "applicant_nationality": applicant.get("applicant_nationality", "-"),
+        "applicant_education": education_rows,
+        "jobexperiences": job_rows,
+        "customerexperiences": customer_rows,
+        "applicant_certification": applicant.get("applicant_certification", "-"),
+        "programming_skills": skills.get("programming_skill", "-"),
+        "product_knowledge": skills.get("productknowledge_skill", "-"),
+        "technology_knowledge": skills.get("technologyknowledge_skill", "-"),
+        "operating_system": skills.get("operatingsystem_skill", "-"),
+        "project_methodology": skills.get("projectmethodology_skill", "-"),
+        "other_skills": skills.get("other_skill", "-"),
+        "known_languages": skills.get("knownlanguage_skill", "").split(',') if skills.get("knownlanguage_skill") else []
+    }
 
 def parse_customer_experience(customer_experience_str):
     positions = []
@@ -399,3 +429,5 @@ def format_applicant_data(rows):
     # Commit all changes to the database
     db_conn.commit()
     print(f"All data for applicant {applicant_id} committed successfully.")
+
+    
