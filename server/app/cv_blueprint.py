@@ -3,6 +3,9 @@ import os
 from werkzeug.utils import secure_filename
 from datetime import datetime
 from .utils import parse_job_experience, parse_customer_experience, parse_education
+from .utils import db_session
+from sqlalchemy import text
+
 
 cv_blueprint = Blueprint('cv', __name__)
 
@@ -94,3 +97,56 @@ def get_origin_cv(filename):
         return send_from_directory(ONEDRIVE_FOLDER, filename)
     except FileNotFoundError:
         return jsonify({'error': 'File tidak ditemukan'}), 404
+    
+@cv_blueprint.route('/applicant/<string:applicant_id>', methods=['GET'])
+def get_applicant_by_id(applicant_id):
+    try:
+        result = db_session.execute(
+            text("SELECT * FROM applicant WHERE applicant_id = :id"),
+            {'id': applicant_id}
+        ).mappings().fetchone()
+
+        print("Diterima ID:", applicant_id)
+
+        if not result:
+            return jsonify({'error': 'Pelamar tidak ditemukan'}), 404
+
+        return jsonify(dict(result)), 200
+
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+
+
+# === Update data pelamar ===
+@cv_blueprint.route('/applicant/<string:applicant_id>', methods=['PUT'])
+def update_applicant_by_id(applicant_id):
+    data = request.get_json()
+    try:
+        db_session.execute(
+            text("""
+                UPDATE applicant
+                SET applicant_name = :name,
+                    applicant_contact = :contact,
+                    applicant_email = :email,
+                    applicant_address = :address,
+                    applicant_city = :city,
+                    applicant_nationality = :nationality,
+                    applicant_gender = :gender
+                WHERE applicant_id = :id
+            """), {
+                'id': applicant_id.strip(),
+                'name': data.get('applicant_name'),
+                'contact': data.get('applicant_contact'),
+                'email': data.get('applicant_email'),
+                'address': data.get('applicant_address'),
+                'city': data.get('applicant_city'),
+                'nationality': data.get('applicant_nationality'),
+                'gender': data.get('applicant_gender'),
+            }
+        )
+        db_session.commit()
+        return jsonify({'message': 'Data pelamar berhasil diperbarui'}), 200
+
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
