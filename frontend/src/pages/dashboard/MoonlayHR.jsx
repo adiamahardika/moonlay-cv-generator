@@ -435,32 +435,41 @@ const exportPdf = () => {
 
   // CV generation
   //@ts-ignore
-  const handleGenerateCV = (applicantid, applicantname) => {
-    setembedPdfUrl(null);
-    setShowDialog(true); // Open dialog immediately
-    setLoading(true); // Show loading spinner
+ const handleGenerateCV = (applicantid, applicantname) => {
+  setembedPdfUrl(null);
+  setShowDialog(true); // Show the dialog immediately
+  setLoading(true); // Show loading spinner
 
-    axios
-      .post(`${import.meta.env.VITE_BACKEND_URL}/generate-cv`, {
-        applicantid: applicantid,
-        applicantname: applicantname,
-      })
-      .then((response) => {
-        console.log('Response:', response); // Debugging line
-        if (response.data.pdfUrl) {
-          const pdfPath = `${import.meta.env.VITE_BACKEND_URL}/download/pdf/${response.data.pdfUrl}`;
-          const docxPath = `${import.meta.env.VITE_BACKEND_URL}/download/word/${response.data.docxUrl}`;
-          const embedPdfPath = `${import.meta.env.VITE_BACKEND_URL}/embed/pdf/${response.data.pdfUrl}`;
-          setPdfUrl(pdfPath);
-          setDocxUrl(docxPath);
-          setembedPdfUrl(embedPdfPath);
-          setLoading(false); // Hide loading spinner when done
-        } else {
-          alert('Failed to generate CV.');
-          setLoading(false); // Hide spinner on failure
-        }
-      });
+  // Find the full applicant data by ID
+  const selectedRow = data.find((row) => row.applicant_id === applicantid);
+
+  // Prepare the payload expected by the Flask backend
+  const payload = {
+    name: selectedRow?.applicant_name || applicantname,
+    email: selectedRow?.applicant_email || '',
+    address: selectedRow?.applicant_contact || '-', // Optional fallback
   };
+
+  axios
+    .post(`${import.meta.env.VITE_BACKEND_URL}/generate-cv`, payload)
+    .then((response) => {
+      const { preview_url, download_url } = response.data;
+      if (preview_url) {
+        const fullPdfUrl = `${import.meta.env.VITE_BACKEND_URL}${preview_url}`;
+        setPdfUrl(`${import.meta.env.VITE_BACKEND_URL}${download_url}`);
+        setembedPdfUrl(fullPdfUrl);
+      } else {
+        alert('Failed to generate CV.');
+      }
+    })
+    .catch((err) => {
+      console.error('Generate CV error:', err);
+      alert('An error occurred while generating the CV.');
+    })
+    .finally(() => setLoading(false)); // Always stop the spinner
+};
+
+
 
   const downloadItems = [
     {
