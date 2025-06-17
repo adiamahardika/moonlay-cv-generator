@@ -369,9 +369,15 @@ const exportPdf = () => {
       }
     };
 
-    const handleDownloadCvClick = () => {
-      handleGenerateCV(rowData.applicant_id, rowData.applicant_name);
-    };
+   const handleDownloadCvClick = () => {
+  if (!rowData?.applicant_id) {
+    alert("Applicant ID not found.");
+    return;
+  }
+
+  handleGenerateCV(rowData.applicant_id); // ✅ ini yang harus dikirim
+};
+
 
     return (
       <div className="action-buttons" style={{ position: 'relative', display: 'flex' }}>
@@ -438,41 +444,27 @@ const exportPdf = () => {
   // CV generation
   //@ts-ignore
  const handleGenerateCV = (applicantid) => {
+  if (!applicantid) {
+    alert("❌ Cannot generate CV: Applicant ID is missing.");
+    return;
+  }
+
+  console.log("📤 Generating CV for applicant_id:", applicantid); // debug log
+
   setembedPdfUrl(null);
   setShowDialog(true);
   setLoading(true);
 
-  const selectedRow = data.find((row) => row.applicant_id === applicantid);
-
-  const payload = {
-    applicant_name: selectedRow?.applicant_name || '',
-    applicant_email: selectedRow?.applicant_email || '',
-    applicant_dob: selectedRow?.applicant_dob || '-',
-    applicant_city: selectedRow?.applicant_city || '-',
-    applicant_gender: selectedRow?.applicant_gender || '-',
-    applicant_nationality: selectedRow?.applicant_nationality || '-',
-
-    applicant_education: selectedRow?.applicant_education || [],
-    jobexperiences: selectedRow?.job_experiences || [],
-    customerexperiences: selectedRow?.customer_experiences || [],
-    applicant_certification: selectedRow?.applicant_certification || '-',
-    programming_skills: selectedRow?.programming_skills || '-',
-    product_knowledge: selectedRow?.product_knowledge || '-',
-    technology_knowledge: selectedRow?.technology_knowledge || '-',
-    operating_system: selectedRow?.operating_system || '-',
-    project_methodology: selectedRow?.project_methodology || '-',
-    other_skills: selectedRow?.other_skills || '-',
-    known_languages: selectedRow?.known_languages || [],
-  };
-
   axios
-    .post(`${import.meta.env.VITE_BACKEND_URL}/generate-cv`, payload)
+    .post(`${import.meta.env.VITE_BACKEND_URL}/generate-cv`, {
+      applicant_id: applicantid,
+    })
     .then((response) => {
       const { preview_url, download_url } = response.data;
 
-      if (preview_url) {
+      if (preview_url && download_url) {
         const fullUrl = `${import.meta.env.VITE_BACKEND_URL}${download_url}`;
-        setPdfUrl(fullUrl); // file .docx, masih digunakan untuk "Download CV"
+        setPdfUrl(fullUrl);
         setDocxUrl(fullUrl);
         setembedPdfUrl(`${import.meta.env.VITE_BACKEND_URL}${preview_url}`);
       } else {
@@ -485,6 +477,7 @@ const exportPdf = () => {
     })
     .finally(() => setLoading(false));
 };
+
 
 
 
