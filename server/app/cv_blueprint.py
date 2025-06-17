@@ -30,53 +30,23 @@ def validate_file(file, allowed_extensions):
         return "Ukuran file terlalu besar (maksimal 5MB)"
     return None
 
-# === Upload Manual Document ===
-@cv_blueprint.route('/upload-manual', methods=['POST'])
-def upload_manual_document():
+@cv_blueprint.route('/upload', methods=['POST'])
+def upload_file():
     try:
         if 'file' not in request.files:
             return jsonify({'error': 'Tidak ada file yang diunggah'}), 400
 
         file = request.files['file']
-        error = validate_file(file, ALLOWED_UPLOAD_EXTENSIONS.union(ALLOWED_IMAGE_EXTENSIONS))
+        allowed_all = ALLOWED_UPLOAD_EXTENSIONS.union(ALLOWED_IMAGE_EXTENSIONS)
+        error = validate_file(file, allowed_all)
         if error:
             return jsonify({'error': error}), 400
 
         os.makedirs(ONEDRIVE_FOLDER, exist_ok=True)
-
-        filename = secure_filename(file.filename)
-        base, ext = os.path.splitext(filename)
-        unique_filename = f"{base}_{os.urandom(4).hex()}{ext}"
-        file_path = os.path.join(ONEDRIVE_FOLDER, unique_filename)
-        file.save(file_path)
-
-        return jsonify({
-            'message': 'File berhasil diunggah',
-            'filename': unique_filename,
-            'path': file_path
-        }), 200
-
-    except Exception as e:
-        current_app.logger.error(f'Error saat upload: {str(e)}')
-        return jsonify({'error': 'Terjadi kesalahan saat mengunggah file'}), 500
-
-# === Upload Manual CV ===
-@cv_blueprint.route('/upload/manual', methods=['POST'])
-def upload_manual_cv():
-    try:
-        if 'file' not in request.files:
-            return jsonify({'error': 'Tidak ada file yang diunggah'}), 400
-
-        file = request.files['file']
-        error = validate_file(file, ALLOWED_UPLOAD_EXTENSIONS)
-        if error:
-            return jsonify({'error': error}), 400
 
         filename = secure_filename(file.filename)
         timestamp = datetime.now().strftime('%Y%m%d%H%M%S')
         filename_with_time = f"{timestamp}_{filename}"
-
-        os.makedirs(ONEDRIVE_FOLDER, exist_ok=True)
         file_path = os.path.join(ONEDRIVE_FOLDER, filename_with_time)
         file.save(file_path)
 
@@ -87,8 +57,9 @@ def upload_manual_cv():
         }), 200
 
     except Exception as e:
-        current_app.logger.error(f'Error saat upload CV: {str(e)}')
-        return jsonify({'error': 'Terjadi kesalahan saat mengunggah CV'}), 500
+        current_app.logger.error(f'Error saat upload file: {str(e)}')
+        return jsonify({'error': 'Terjadi kesalahan saat mengunggah file'}), 500
+
 
 # === Tampilkan File Origin CV untuk HR (preview atau download) ===
 @cv_blueprint.route('/origin-cv/<filename>', methods=['GET'])

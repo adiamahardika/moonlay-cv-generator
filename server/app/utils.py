@@ -29,46 +29,54 @@ def get_db_connection():
     )
 
 def get_applicant_data(applicant_id):
-    conn = get_db_connection()
-    cursor = conn.cursor(dictionary=True)
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor(dictionary=True)
 
-    cursor.execute("SELECT * FROM applicant WHERE applicant_id = %s", (applicant_id,))
-    applicant = cursor.fetchone()
+        cursor.execute("SELECT * FROM applicant WHERE applicant_id = %s", (applicant_id,))
+        applicant = cursor.fetchone()
 
-    if not applicant:
+        if not applicant:
+            return {}
+
+        cursor.execute("SELECT * FROM education WHERE applicant_id = %s", (applicant_id,))
+        education_rows = cursor.fetchall()
+
+        cursor.execute("SELECT * FROM jobexperience WHERE applicant_id = %s", (applicant_id,))
+        job_rows = cursor.fetchall()
+
+        cursor.execute("SELECT * FROM customerexperience WHERE applicant_id = %s", (applicant_id,))
+        customer_rows = cursor.fetchall()
+
+        cursor.execute("SELECT * FROM skills WHERE applicant_id = %s", (applicant_id,))
+        skills = cursor.fetchone() or {}
+
+        return {
+            "applicant_name": applicant.get("applicant_name") or "-",
+            "applicant_email": applicant.get("applicant_email") or "-",
+            "applicant_dob": applicant.get("applicant_dateofbirth") or "-",
+            "applicant_city": applicant.get("applicant_city") or "-",
+            "applicant_gender": applicant.get("applicant_gender") or "-",
+            "applicant_nationality": applicant.get("applicant_nationality") or "-",
+            "applicant_certification": applicant.get("applicant_certification") or "-",
+
+            "applicant_education": education_rows or [],
+            "jobexperiences": job_rows or [],
+            "customerexperiences": customer_rows or [],
+
+            "programming_skills": skills.get("programming_skill") or "-",
+            "product_knowledge": skills.get("productknowledge_skill") or "-",
+            "technology_knowledge": skills.get("technologyknowledge_skill") or "-",
+            "operating_system": skills.get("operatingsystem_skill") or "-",
+            "project_methodology": skills.get("projectmethodology_skill") or "-",
+            "other_skills": skills.get("other_skill") or "-",
+            "known_languages": (skills.get("knownlanguage_skill") or "").split(',')
+        }
+
+    except Exception as e:
+        print(f"[ERROR] get_applicant_data: {str(e)}")
         return {}
 
-    cursor.execute("SELECT * FROM education WHERE applicant_id = %s", (applicant_id,))
-    education_rows = cursor.fetchall()
-
-    cursor.execute("SELECT * FROM jobexperience WHERE applicant_id = %s", (applicant_id,))
-    job_rows = cursor.fetchall()
-
-    cursor.execute("SELECT * FROM customerexperience WHERE applicant_id = %s", (applicant_id,))
-    customer_rows = cursor.fetchall()
-
-    cursor.execute("SELECT * FROM skills WHERE applicant_id = %s", (applicant_id,))
-    skills = cursor.fetchone() or {}
-
-    return {
-        "applicant_name": applicant.get("applicant_name", "-"),
-        "applicant_email": applicant.get("applicant_email", "-"),
-        "applicant_dob": applicant.get("applicant_dateofbirth", "-"),
-        "applicant_city": applicant.get("applicant_city", "-"),
-        "applicant_gender": applicant.get("applicant_gender", "-"),
-        "applicant_nationality": applicant.get("applicant_nationality", "-"),
-        "applicant_education": education_rows,
-        "jobexperiences": job_rows,
-        "customerexperiences": customer_rows,
-        "applicant_certification": applicant.get("applicant_certification", "-"),
-        "programming_skills": skills.get("programming_skill", "-"),
-        "product_knowledge": skills.get("productknowledge_skill", "-"),
-        "technology_knowledge": skills.get("technologyknowledge_skill", "-"),
-        "operating_system": skills.get("operatingsystem_skill", "-"),
-        "project_methodology": skills.get("projectmethodology_skill", "-"),
-        "other_skills": skills.get("other_skill", "-"),
-        "known_languages": skills.get("knownlanguage_skill", "").split(',') if skills.get("knownlanguage_skill") else []
-    }
 
 def parse_customer_experience(customer_experience_str):
     positions = []
@@ -77,7 +85,6 @@ def parse_customer_experience(customer_experience_str):
     end_dates = []
     projects = []
 
-    # Split customer experiences using the '*' character
     customer_entries = customer_experience_str.strip().split(',')
 
     for entry in customer_entries:
@@ -104,18 +111,15 @@ def parse_customer_experience(customer_experience_str):
         start_date = re.sub(r'[^0-9/-]', '', start_date) or 'Not Specified'
         end_date = re.sub(r'[^0-9/-]', '', end_date) or 'Present'
 
-        # Append values to lists
+        # Extract project name if exists
+        project_name = parts[1].strip().split('*')[-1] if '*' in parts[1] else ''
+        projects.append(project_name.strip())
+
         positions.append(position)
         employers.append(employer)
         start_dates.append(start_date)
         end_dates.append(end_date)
 
-        # Extract project name for customer experience
-        project_name = parts[1].strip().split(
-            '*')[-1] if '*' in parts[1] else ''
-        projects.append(project_name.strip())
-
-    # Create DataFrame for customer experience
     return pd.DataFrame({
         'Position': positions,
         'Employer': employers,
@@ -123,7 +127,6 @@ def parse_customer_experience(customer_experience_str):
         'End Date': end_dates,
         'Project Name': projects
     })
-
 def parse_education(group_concat_string):
     # List to store parsed education details
     parsed_education = []
