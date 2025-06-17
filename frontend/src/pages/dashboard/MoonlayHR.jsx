@@ -52,7 +52,7 @@ const [originCVData, setOriginCVData] = useState({
 });
 const [originPdfUrl, setOriginPdfUrl] = useState(null);
 
-// ✅ FUNGSI: Fetch Origin CV (ambil dari backend dan isi form)
+// ✅ FUNCTION: Fetch Origin CV from backend and populate form
 const fetchOriginCV = async (applicant_id, rowData = {}) => {
   try {
     const response = await axios.post(`${import.meta.env.VITE_BACKEND_URL}/get-origin-cv`, {
@@ -61,13 +61,13 @@ const fetchOriginCV = async (applicant_id, rowData = {}) => {
 
     const originData = response.data?.data || {};
 
-    // Utility: hilangkan tag HTML dan aman dari non-string
+    // Utility: remove HTML tags and ensure safe string handling
     const cleanHTML = (value) => {
       if (typeof value !== 'string') return '';
       return value.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim();
     };
 
-    // Fallback jika data origin kosong, ambil dari row tabel
+    // Fallback if origin data is empty: extract from table row
     const fallbackApplicant = {
       applicant_name: rowData?.applicant_name || '',
       applicant_contact: rowData?.applicant_contact || '',
@@ -90,6 +90,7 @@ const fetchOriginCV = async (applicant_id, rowData = {}) => {
       { project_name: cleanHTML(rowData?.customer_experiences), client: '' },
     ];
 
+    // Set form state with either backend data or fallback
     setOriginCVData({
       applicant: originData.applicant || fallbackApplicant,
       education: originData.education?.length ? originData.education : fallbackEducation,
@@ -103,22 +104,23 @@ const fetchOriginCV = async (applicant_id, rowData = {}) => {
 
     setOriginPdfUrl(response.data.origin_pdf_url || null);
   } catch (error) {
-    console.error('❌ Gagal fetch origin CV:', error);
-    alert('Gagal mengambil data origin CV.');
+    console.error('❌ Failed to fetch origin CV:', error);
+    alert('Failed to retrieve origin CV data.');
   }
 };
 
-// ✅ FUNGSI: Simpan Origin CV ke backend
+// ✅ FUNCTION: Save origin CV form data to backend
 const saveOriginCV = async () => {
   try {
     await axios.post(`${import.meta.env.VITE_BACKEND_URL}/update-origin-cv`, originCVData);
-    alert('Data berhasil disimpan!');
+    alert('Data saved successfully!');
     setShowEditDialog(false);
   } catch (error) {
-    console.error('❌ Gagal menyimpan origin CV:', error);
-    alert('Gagal menyimpan data origin CV.');
+    console.error('❌ Failed to save origin CV:', error);
+    alert('Failed to save origin CV data.');
   }
 };
+
 
 
   // This will contain your data, replace with actual data source.
@@ -435,29 +437,44 @@ const exportPdf = () => {
 
   // CV generation
   //@ts-ignore
- const handleGenerateCV = (applicantid, applicantname) => {
+ const handleGenerateCV = (applicantid) => {
   setembedPdfUrl(null);
-  setShowDialog(true); // Show the dialog immediately
-  setLoading(true); // Show loading spinner
+  setShowDialog(true);
+  setLoading(true);
 
-  // Find the full applicant data by ID
   const selectedRow = data.find((row) => row.applicant_id === applicantid);
 
-  // Prepare the payload expected by the Flask backend
   const payload = {
-    name: selectedRow?.applicant_name || applicantname,
-    email: selectedRow?.applicant_email || '',
-    address: selectedRow?.applicant_contact || '-', // Optional fallback
+    applicant_name: selectedRow?.applicant_name || '',
+    applicant_email: selectedRow?.applicant_email || '',
+    applicant_dob: selectedRow?.applicant_dob || '-',
+    applicant_city: selectedRow?.applicant_city || '-',
+    applicant_gender: selectedRow?.applicant_gender || '-',
+    applicant_nationality: selectedRow?.applicant_nationality || '-',
+
+    applicant_education: selectedRow?.applicant_education || [],
+    jobexperiences: selectedRow?.job_experiences || [],
+    customerexperiences: selectedRow?.customer_experiences || [],
+    applicant_certification: selectedRow?.applicant_certification || '-',
+    programming_skills: selectedRow?.programming_skills || '-',
+    product_knowledge: selectedRow?.product_knowledge || '-',
+    technology_knowledge: selectedRow?.technology_knowledge || '-',
+    operating_system: selectedRow?.operating_system || '-',
+    project_methodology: selectedRow?.project_methodology || '-',
+    other_skills: selectedRow?.other_skills || '-',
+    known_languages: selectedRow?.known_languages || [],
   };
 
   axios
     .post(`${import.meta.env.VITE_BACKEND_URL}/generate-cv`, payload)
     .then((response) => {
       const { preview_url, download_url } = response.data;
+
       if (preview_url) {
-        const fullPdfUrl = `${import.meta.env.VITE_BACKEND_URL}${preview_url}`;
-        setPdfUrl(`${import.meta.env.VITE_BACKEND_URL}${download_url}`);
-        setembedPdfUrl(fullPdfUrl);
+        const fullUrl = `${import.meta.env.VITE_BACKEND_URL}${download_url}`;
+        setPdfUrl(fullUrl); // file .docx, masih digunakan untuk "Download CV"
+        setDocxUrl(fullUrl);
+        setembedPdfUrl(`${import.meta.env.VITE_BACKEND_URL}${preview_url}`);
       } else {
         alert('Failed to generate CV.');
       }
@@ -466,7 +483,7 @@ const exportPdf = () => {
       console.error('Generate CV error:', err);
       alert('An error occurred while generating the CV.');
     })
-    .finally(() => setLoading(false)); // Always stop the spinner
+    .finally(() => setLoading(false));
 };
 
 
@@ -1009,7 +1026,7 @@ const exportPdf = () => {
   <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '2rem' }}>
     {/* LEFT: FORM */}
     <div style={{ overflowY: 'auto', maxHeight: '80vh' }}>
-      <h4>Form Origin CV</h4>
+      <h4>EDIT DATA</h4>
 
       <div className="p-field">
         <label>Applicant Name</label>
